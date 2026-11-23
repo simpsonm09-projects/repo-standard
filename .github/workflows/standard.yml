@@ -8,7 +8,6 @@ permissions:
 
 jobs:
   standard:
-    if: github.repository_owner == 'simpsonm09-org' || github.repository_owner == 'simpsonm09-projects'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -34,7 +33,7 @@ jobs:
           test -n "$ref"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Checkout the pinned standard
-        if: github.repository != 'simpsonm09-org/repo-standard' && github.repository != 'simpsonm09-projects/repo-standard'
+        if: github.repository != 'simpsonm09-projects/repo-standard'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.repository_owner }}/repo-standard
