@@ -26,7 +26,7 @@ Use these sections in this order.
 - Commands go through `just`. Do not put raw tool invocations in the README.
 - The purpose sentence names the repository and its audience.
 - The `## License` section states `MIT` and links `LICENSE`.
-- A scaffold carries a `## Status` line, as `openclaw-homelab` does.
+- A scaffold carries a `## Status` line.
 
 ## Source of truth
 
