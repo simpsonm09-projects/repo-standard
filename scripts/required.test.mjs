@@ -223,6 +223,25 @@ function testLiveExtraTestJob(assert) {
     ids(hooksWithoutJob).join() === 'ruleset/required-no-job',
     `hooks required with no job: got ${ids(hooksWithoutJob)}`,
   );
+
+  for (const context of ['fmt', 'typecheck']) {
+    const required = requiredGaps({
+      kind: 'covered',
+      live: [...expectedChecks('covered'), context],
+      jobs: jobsOf([...COVERED_JOBS, context]),
+    });
+    assert(required.length === 0, `${context} may be required once its job exists: got ${JSON.stringify(required)}`);
+
+    const absent = requiredGaps({
+      kind: 'covered',
+      live: [...expectedChecks('covered'), context],
+      jobs: jobsOf(COVERED_JOBS),
+    });
+    assert(ids(absent).join() === 'ruleset/required-no-job', `${context} required with no job: got ${ids(absent)}`);
+
+    const older = requiredGaps({ kind: 'covered', live: expectedChecks('covered'), jobs: jobsOf(COVERED_JOBS) });
+    assert(older.length === 0, `an older ruleset without ${context} is not a gap: got ${JSON.stringify(older)}`);
+  }
 }
 
 function testLiveNoJobForBaseCheck(assert) {
