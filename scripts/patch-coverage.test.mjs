@@ -75,8 +75,14 @@ function testParsing(assert) {
   ].join('\n');
   const record = parseLcov(text).get('src/a.py');
   assert(record.functions.length === 2, 'both FN forms parse');
-  assert(record.functions[0].name === 'first' && record.functions[0].start === 10, 'the pytest FN form keeps start and name');
-  assert(record.functions[1].name === 'second' && record.functions[1].start === 30, 'the vitest FN form keeps start and name');
+  assert(
+    record.functions[0].name === 'first' && record.functions[0].start === 10,
+    'the pytest FN form keeps start and name',
+  );
+  assert(
+    record.functions[1].name === 'second' && record.functions[1].start === 30,
+    'the vitest FN form keeps start and name',
+  );
   assert(record.functions[0].end === 29, 'a span ends before the next function');
   assert(record.functions[1].end === Number.POSITIVE_INFINITY, 'the last span runs to the end of the file');
   assert(record.functions[0].count === 5 && record.functions[1].count === 0, 'FNDA attaches by name');
@@ -92,7 +98,10 @@ function testBranchGate(assert) {
   const changed = new Map([['src/a.js', new Set([10])]]);
   const strict = evaluate(gateOptions({ mode: 'branches', branchThreshold: 70 }), files, changed);
   assert(strict.code === EXIT.FAIL, 'branch coverage below the branch threshold fails');
-  assert(strict.stdout.some((line) => line.includes('1/2 changed branches covered (50.0%)')), 'branch coverage is reported');
+  assert(
+    strict.stdout.some((line) => line.includes('1/2 changed branches covered (50.0%)')),
+    'branch coverage is reported',
+  );
   const lenient = evaluate(gateOptions({ mode: 'branches', branchThreshold: 50 }), files, changed);
   assert(lenient.code === EXIT.OK, 'branch coverage at the threshold passes');
 }
@@ -102,12 +111,24 @@ function testMissingBranch(assert) {
   const changed = new Map([['src/a.js', new Set([10])]]);
   const strict = evaluate(gateOptions({ mode: 'branches' }), files, changed);
   assert(strict.code === EXIT.FAIL, 'branch mode without BRDA fails closed');
-  assert(strict.stderr.some((line) => line.includes('branch data unavailable')), 'the failure names the missing branch data');
+  assert(
+    strict.stderr.some((line) => line.includes('branch data unavailable')),
+    'the failure names the missing branch data',
+  );
   const fallback = evaluate(gateOptions({ mode: 'branches', allowMissingBranch: true }), files, changed);
   assert(fallback.code === EXIT.OK, 'the fallback passes when the lines are covered');
-  assert(fallback.stdout.some((line) => line.includes('degraded to line coverage')), 'the fallback degrades to line coverage');
-  assert(fallback.stdout.some((line) => line.includes('CRAP unavailable')), 'the fallback reports CRAP unavailable');
-  assert(fallback.stdout.some((line) => line.includes('1/1 changed lines covered')), 'the fallback still gates lines');
+  assert(
+    fallback.stdout.some((line) => line.includes('degraded to line coverage')),
+    'the fallback degrades to line coverage',
+  );
+  assert(
+    fallback.stdout.some((line) => line.includes('CRAP unavailable')),
+    'the fallback reports CRAP unavailable',
+  );
+  assert(
+    fallback.stdout.some((line) => line.includes('1/1 changed lines covered')),
+    'the fallback still gates lines',
+  );
 }
 
 function testNoUnits(assert) {
@@ -115,7 +136,10 @@ function testNoUnits(assert) {
   const changed = new Map([['src/a.js', new Set([99])]]);
   const result = evaluate(gateOptions(), files, changed);
   assert(result.code === EXIT.OK, 'a change with no measured units passes');
-  assert(result.stdout.some((line) => line.includes('no measured changed units')), 'the pass is reported');
+  assert(
+    result.stdout.some((line) => line.includes('no measured changed units')),
+    'the pass is reported',
+  );
 }
 
 function testCrap(assert) {
@@ -132,10 +156,16 @@ function testCrap(assert) {
   const files = parseLcov(text);
   const record = files.get('src/a.js');
   // Two distinct blocks give CC 3, and 2 of 3 lines are covered.
-  assert(Math.abs(crapScore(record, record.functions[0]) - 10 / 3) < 1e-9, 'CRAP uses the distinct blocks and span coverage');
+  assert(
+    Math.abs(crapScore(record, record.functions[0]) - 10 / 3) < 1e-9,
+    'CRAP uses the distinct blocks and span coverage',
+  );
   const changed = new Map([['src/a.js', new Set([11])]]);
   const result = evaluate(gateOptions({ crap: true }), files, changed);
-  assert(result.stdout.some((line) => line.includes('CRAP 3.3 src/a.js:10 f (advisory)')), 'the gate reports advisory CRAP for a touched function');
+  assert(
+    result.stdout.some((line) => line.includes('CRAP 3.3 src/a.js:10 f (advisory)')),
+    'the gate reports advisory CRAP for a touched function',
+  );
 }
 
 // Run the suite and return an exit code, so the CLI and verify.mjs share one

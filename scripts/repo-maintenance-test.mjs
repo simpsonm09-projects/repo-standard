@@ -31,8 +31,16 @@ const MINIMUM = [3, 10];
 // Alias, which prints a store prompt and fails when Python is missing. POSIX
 // installs Python 3 as `python3`.
 function candidateList(platform) {
-  if (platform === 'win32') return [['python', []], ['py', ['-3']], ['python3', []]];
-  return [['python3', []], ['python', []]];
+  if (platform === 'win32')
+    return [
+      ['python', []],
+      ['py', ['-3']],
+      ['python3', []],
+    ];
+  return [
+    ['python3', []],
+    ['python', []],
+  ];
 }
 
 // A fresh list per call, so one caller cannot change what another one receives.
@@ -72,9 +80,7 @@ export function runTest() {
     );
     return EXIT.FAIL;
   }
-  process.stdout.write(
-    `repository-maintenance planner tests: ${python.cmd} (Python ${python.version.join('.')})\n`,
-  );
+  process.stdout.write(`repository-maintenance planner tests: ${python.cmd} (Python ${python.version.join('.')})\n`);
   const args = [
     ...python.base,
     '-B',

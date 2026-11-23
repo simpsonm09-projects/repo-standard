@@ -115,8 +115,10 @@ function validateParsedShape(aggregate) {
 function recordUnrecognized(parsed, gaps) {
   const key = parsed.key;
   if (parsed.kind === 'bad-job-key') gaps.push(`all-checks job uses unsupported YAML key spelling for "${key}"`);
-  else if (parsed.kind === 'bad-first-step-key' || parsed.kind === 'bad-step-key') gaps.push(`all-checks step uses unsupported YAML key spelling for "${key}"`);
-  else if (parsed.kind === 'bad-env-key') gaps.push(`all-checks step env uses unsupported YAML key spelling for "${key}"`);
+  else if (parsed.kind === 'bad-first-step-key' || parsed.kind === 'bad-step-key')
+    gaps.push(`all-checks step uses unsupported YAML key spelling for "${key}"`);
+  else if (parsed.kind === 'bad-env-key')
+    gaps.push(`all-checks step env uses unsupported YAML key spelling for "${key}"`);
   else gaps.push('all-checks aggregate contains an unrecognized YAML key or shape');
 }
 
@@ -160,20 +162,31 @@ function needsGaps(aggregate, expectedJobs) {
   const gaps = [];
   const needs = aggregate.find((line) => keyLine(line, 4)?.key === 'needs');
   const rawNeeds = needs ? keyLine(needs, 4).value : null;
-  const parsedNeeds = rawNeeds?.startsWith('[') && rawNeeds.endsWith(']')
-    ? rawNeeds.slice(1, -1).split(',').map((value) => value.trim()).filter(Boolean)
-    : null;
+  const parsedNeeds =
+    rawNeeds?.startsWith('[') && rawNeeds.endsWith(']')
+      ? rawNeeds
+          .slice(1, -1)
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : null;
   if (!expectedJobs.length) gaps.push('all-checks needs graph must contain at least one dependency job');
   if (!parsedNeeds || parsedNeeds.some((name) => !/^[A-Za-z0-9_.-]+$/.test(name))) {
     gaps.push('all-checks needs must use the supported inline job-name list');
-  } else if (new Set(parsedNeeds).size !== parsedNeeds.length || parsedNeeds.length !== expectedJobs.length || expectedJobs.some((name) => !parsedNeeds.includes(name))) {
+  } else if (
+    new Set(parsedNeeds).size !== parsedNeeds.length ||
+    parsedNeeds.length !== expectedJobs.length ||
+    expectedJobs.some((name) => !parsedNeeds.includes(name))
+  ) {
     gaps.push(`all-checks needs must name every other CI job exactly once (${expectedJobs.join(', ')})`);
   }
   return gaps;
 }
 
 function hasContinueOnError(block) {
-  return block.some((line) => /(?:["']?continue-on-error["']?[ \t]*:|^[ \t]*\?[ \t]+["']?continue-on-error["']?[ \t]*(?:#.*)?$)/.test(line));
+  return block.some((line) =>
+    /(?:["']?continue-on-error["']?[ \t]*:|^[ \t]*\?[ \t]+["']?continue-on-error["']?[ \t]*(?:#.*)?$)/.test(line),
+  );
 }
 
 function workflowShapeGaps(workflowText) {
@@ -207,9 +220,15 @@ function parseGaps(jobs) {
   const gaps = [];
   for (const name of jobs.keys()) {
     if (name.startsWith('!explicit-jobs-mapping-key-')) {
-      gaps.push({ id: 'ci/all-checks', message: `ci.yml jobs mapping uses an unsupported explicit key at ${name.slice(name.lastIndexOf('-line-') + 1)}` });
+      gaps.push({
+        id: 'ci/all-checks',
+        message: `ci.yml jobs mapping uses an unsupported explicit key at ${name.slice(name.lastIndexOf('-line-') + 1)}`,
+      });
     } else if (name.startsWith('!duplicate-jobs-key-')) {
-      gaps.push({ id: 'ci/all-checks', message: `ci.yml jobs mapping repeats job key "${name.slice('!duplicate-jobs-key-'.length, name.lastIndexOf('-line-'))}"` });
+      gaps.push({
+        id: 'ci/all-checks',
+        message: `ci.yml jobs mapping repeats job key "${name.slice('!duplicate-jobs-key-'.length, name.lastIndexOf('-line-'))}"`,
+      });
     } else if (name.startsWith('!unsupported-jobs-') || name.startsWith('!duplicate-jobs-heading-')) {
       gaps.push({ id: 'ci/all-checks', message: `ci.yml jobs mapping has an unsupported key or heading (${name})` });
     }
@@ -220,7 +239,10 @@ function parseGaps(jobs) {
 function appendDependencyGaps(jobs, gaps) {
   for (const [name, block] of jobs) {
     if (name !== 'all-checks' && hasContinueOnError(block)) {
-      gaps.push({ id: 'ci/all-checks', message: `job "${name}" uses continue-on-error, which can hide a failed dependency` });
+      gaps.push({
+        id: 'ci/all-checks',
+        message: `job "${name}" uses continue-on-error, which can hide a failed dependency`,
+      });
     }
   }
 }
@@ -233,7 +255,12 @@ export function codeownersGaps(text) {
   const defaults = lines.filter(([pattern]) => pattern === '*');
   const broadCatchalls = lines.filter(([pattern]) => /^[*/]+$/.test(pattern));
   if (defaults.length !== 1 || !defaults[0].slice(1).includes('@simpsonm09')) {
-    return [{ id: 'community/CODEOWNERS', message: 'CODEOWNERS must assign the default "*" pattern to @simpsonm09 exactly once' }];
+    return [
+      {
+        id: 'community/CODEOWNERS',
+        message: 'CODEOWNERS must assign the default "*" pattern to @simpsonm09 exactly once',
+      },
+    ];
   }
   if (broadCatchalls.some(([, ...owners]) => !owners.includes('@simpsonm09'))) {
     return [{ id: 'community/CODEOWNERS', message: 'CODEOWNERS broad catch-all patterns must include @simpsonm09' }];
@@ -242,6 +269,8 @@ export function codeownersGaps(text) {
 }
 
 export function needsSucceeded(needs, expectedJobs) {
-  return expectedJobs.length > 0
-    && expectedJobs.every((name) => Object.hasOwn(needs, name) && needs[name]?.result === 'success');
+  return (
+    expectedJobs.length > 0 &&
+    expectedJobs.every((name) => Object.hasOwn(needs, name) && needs[name]?.result === 'success')
+  );
 }

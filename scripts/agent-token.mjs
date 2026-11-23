@@ -59,9 +59,12 @@ function validateRepositoryName(owner, repo) {
   if (typeof owner !== 'string' || typeof repo !== 'string' || !owner || !repo) {
     throw new Error('owner and repository must be nonempty strings');
   }
-  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(owner)
-    || !/^[A-Za-z0-9_.-]+$/.test(repo)
-    || repo === '.' || repo === '..') {
+  if (
+    !/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(owner) ||
+    !/^[A-Za-z0-9_.-]+$/.test(repo) ||
+    repo === '.' ||
+    repo === '..'
+  ) {
     throw new Error('invalid owner or repository name');
   }
 }
@@ -73,21 +76,28 @@ export async function mintForRepo(owner, repo, deps = {}) {
   const jwt = appJwt(id, key);
   const installation = await github(`/repos/${owner}/${repo}/installation`, jwt, {}, fetchImpl);
   if (!Number.isSafeInteger(installation?.id) || installation.id <= 0) throw new Error('invalid installation id');
-  const token = await github(`/app/installations/${installation.id}/access_tokens`, jwt, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ repositories: [repo] }),
-  }, fetchImpl);
+  const token = await github(
+    `/app/installations/${installation.id}/access_tokens`,
+    jwt,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repositories: [repo] }),
+    },
+    fetchImpl,
+  );
   if (!token || typeof token.token !== 'string' || token.token.trim() === '') throw new Error('invalid token response');
   const expiry = typeof token.expires_at === 'string' ? Date.parse(token.expires_at) : NaN;
   if (!Number.isFinite(expiry) || expiry <= Date.now()) throw new Error('invalid token response');
   if (token.repositories !== undefined) {
     const expected = `${owner}/${repo}`.toLowerCase();
-    if (!Array.isArray(token.repositories)
-      || token.repositories.length !== 1
-      || !token.repositories[0]
-      || typeof token.repositories[0].full_name !== 'string'
-      || token.repositories[0].full_name.toLowerCase() !== expected) {
+    if (
+      !Array.isArray(token.repositories) ||
+      token.repositories.length !== 1 ||
+      !token.repositories[0] ||
+      typeof token.repositories[0].full_name !== 'string' ||
+      token.repositories[0].full_name.toLowerCase() !== expected
+    ) {
       throw new Error('token response repository scope mismatch');
     }
   }

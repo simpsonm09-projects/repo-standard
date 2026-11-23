@@ -21,7 +21,16 @@ import { checkStandard } from './check-standard.mjs';
 import { jobsCalling, parseJobs } from './lib/ci.mjs';
 import { loadExceptions } from './lib/exceptions.mjs';
 import { isMain } from './lib/proc.mjs';
-import { ALL_CHECKS_REQUIRED, COVERAGE_CONTEXT, expectedChecks, kindOf, protectMainSelection, requiredGaps, rulesetGaps, uncoveredCallGaps } from './lib/required.mjs';
+import {
+  ALL_CHECKS_REQUIRED,
+  COVERAGE_CONTEXT,
+  expectedChecks,
+  kindOf,
+  protectMainSelection,
+  requiredGaps,
+  rulesetGaps,
+  uncoveredCallGaps,
+} from './lib/required.mjs';
 
 const CHECK_REPO = fileURLToPath(new URL('./check-repo.mjs', import.meta.url));
 const EXCEPTIONS = fileURLToPath(new URL('../docs/exceptions.json', import.meta.url));
@@ -30,7 +39,14 @@ const PIN = 'a'.repeat(40);
 const UNCOVERED_REPO = 'simpsonm09-projects/repo-catalog';
 const COVERED_REPO = 'simpsonm09-projects/fixture-go';
 const SHARED_JOBS = ['lint', 'aislop', 'security', 'standard'];
-const BASE_LIVE = ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'test'];
+const BASE_LIVE = [
+  'lint / flint',
+  'aislop / aislop',
+  'security / trivy',
+  'security / secrets',
+  'standard / standard',
+  'test',
+];
 
 function makeAsserter() {
   let count = 0;
@@ -56,10 +72,13 @@ const sharedUses = (name) => `simpsonm09-projects/repo-standard/.github/workflow
 // A ci.yml with the four shared jobs, a plain test job, and any extras. Each option
 // changes one job so a case names the one thing it tests.
 function ciText({ coverage = null, omit = [], testSuffixes = [] } = {}) {
-  const blocks = SHARED_JOBS.filter((name) => !omit.includes(name)).map((name) => `  ${name}:\n    uses: ${sharedUses(name)}`);
+  const blocks = SHARED_JOBS.filter((name) => !omit.includes(name)).map(
+    (name) => `  ${name}:\n    uses: ${sharedUses(name)}`,
+  );
   if (coverage !== null) blocks.push(`  coverage:\n    uses: ${coverage}`);
   if (!omit.includes('test')) blocks.push('  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: just test');
-  for (const suffix of testSuffixes) blocks.push(`  test-${suffix}:\n    runs-on: windows-latest\n    steps:\n      - run: just test`);
+  for (const suffix of testSuffixes)
+    blocks.push(`  test-${suffix}:\n    runs-on: windows-latest\n    steps:\n      - run: just test`);
   return ['name: ci', 'on:', '  pull_request:', 'jobs:', ...blocks, ''].join('\n');
 }
 
@@ -96,14 +115,23 @@ function testKindOf(assert) {
   assert(kindOf(exceptions, COVERED_REPO) === 'covered', 'a repository with no exception is covered');
   assert(kindOf(exceptions, null) === 'covered', 'no repository identity is covered');
   const other = [{ repo: UNCOVERED_REPO, checks: new Set(['community/LICENSE']), reason: '', date: '' }];
-  assert(kindOf(other, UNCOVERED_REPO) === 'covered', 'an exception on another check does not make a repository uncovered');
+  assert(
+    kindOf(other, UNCOVERED_REPO) === 'covered',
+    'an exception on another check does not make a repository uncovered',
+  );
 }
 
 function testExpectedChecks(assert) {
   assert(!ALL_CHECKS_REQUIRED, 'all-checks stays outside required ruleset contexts until consumers are ready');
-  assert(!expectedChecks('covered').includes('all-checks') && !expectedChecks('uncovered').includes('all-checks'), 'staged rollout does not break consumers before they report all-checks');
+  assert(
+    !expectedChecks('covered').includes('all-checks') && !expectedChecks('uncovered').includes('all-checks'),
+    'staged rollout does not break consumers before they report all-checks',
+  );
   assert(expectedChecks('covered').includes(COVERAGE_CONTEXT), 'a covered repository expects coverage / coverage');
-  assert(!expectedChecks('uncovered').includes(COVERAGE_CONTEXT), 'an uncovered repository does not expect coverage / coverage');
+  assert(
+    !expectedChecks('uncovered').includes(COVERAGE_CONTEXT),
+    'an uncovered repository does not expect coverage / coverage',
+  );
   for (const kind of ['covered', 'uncovered']) {
     assert(expectedChecks(kind).includes('test'), `a ${kind} repository expects the test job`);
   }
@@ -111,8 +139,14 @@ function testExpectedChecks(assert) {
 
 function testUncoveredCallGaps(assert) {
   const gaps = uncoveredCallGaps('uncovered', true);
-  assert(gaps.length === 1 && gaps[0].id === 'ci/coverage-unrequired', 'an uncovered repository that calls coverage is a gap');
-  assert(uncoveredCallGaps('uncovered', false).length === 0, 'an uncovered repository without a coverage call is clean');
+  assert(
+    gaps.length === 1 && gaps[0].id === 'ci/coverage-unrequired',
+    'an uncovered repository that calls coverage is a gap',
+  );
+  assert(
+    uncoveredCallGaps('uncovered', false).length === 0,
+    'an uncovered repository without a coverage call is clean',
+  );
   assert(uncoveredCallGaps('covered', true).length === 0, 'a covered repository that calls coverage is clean');
 }
 
@@ -121,15 +155,25 @@ function testLiveCoveredRepository(assert) {
   assert(clean.length === 0, `a covered repository matching its kind: expected no gaps, got ${JSON.stringify(clean)}`);
 
   const missing = requiredGaps({ kind: 'covered', live: BASE_LIVE, jobs: jobsOf(COVERED_JOBS) });
-  assert(ids(missing).join() === 'ruleset/required-missing', `a covered repository without coverage required: got ${ids(missing)}`);
+  assert(
+    ids(missing).join() === 'ruleset/required-missing',
+    `a covered repository without coverage required: got ${ids(missing)}`,
+  );
   assert(missing[0].message.includes(COVERAGE_CONTEXT), 'the missing gap names coverage / coverage');
 }
 
 function testLiveUncoveredRepository(assert) {
   const clean = requiredGaps({ kind: 'uncovered', live: BASE_LIVE, jobs: jobsOf(UNCOVERED_JOBS) });
-  assert(clean.length === 0, `an uncovered repository matching its kind: expected no gaps, got ${JSON.stringify(clean)}`);
+  assert(
+    clean.length === 0,
+    `an uncovered repository matching its kind: expected no gaps, got ${JSON.stringify(clean)}`,
+  );
 
-  const noJob = requiredGaps({ kind: 'uncovered', live: [...BASE_LIVE, COVERAGE_CONTEXT], jobs: jobsOf(UNCOVERED_JOBS) });
+  const noJob = requiredGaps({
+    kind: 'uncovered',
+    live: [...BASE_LIVE, COVERAGE_CONTEXT],
+    jobs: jobsOf(UNCOVERED_JOBS),
+  });
   assert(ids(noJob).join() === 'ruleset/required-no-job', `coverage required with no coverage job: got ${ids(noJob)}`);
 
   const unexpected = requiredGaps({
@@ -137,26 +181,45 @@ function testLiveUncoveredRepository(assert) {
     live: [...BASE_LIVE, COVERAGE_CONTEXT],
     jobs: jobsOf([...UNCOVERED_JOBS, 'coverage']),
   });
-  assert(ids(unexpected).join() === 'ruleset/required-unexpected', `coverage required on an uncovered repository with a job: got ${ids(unexpected)}`);
+  assert(
+    ids(unexpected).join() === 'ruleset/required-unexpected',
+    `coverage required on an uncovered repository with a job: got ${ids(unexpected)}`,
+  );
 }
 
 function testLiveExtraTestJob(assert) {
-  const withJob = requiredGaps({ kind: 'covered', live: [...expectedChecks('covered'), 'test-node'], jobs: jobsOf([...COVERED_JOBS, 'test-node']) });
+  const withJob = requiredGaps({
+    kind: 'covered',
+    live: [...expectedChecks('covered'), 'test-node'],
+    jobs: jobsOf([...COVERED_JOBS, 'test-node']),
+  });
   assert(withJob.length === 0, `a stable test-node job may be required: got ${JSON.stringify(withJob)}`);
 
-  const withoutJob = requiredGaps({ kind: 'covered', live: [...expectedChecks('covered'), 'test-node'], jobs: jobsOf(COVERED_JOBS) });
-  assert(ids(withoutJob).join() === 'ruleset/required-no-job', `test-node required with no job: got ${ids(withoutJob)}`);
+  const withoutJob = requiredGaps({
+    kind: 'covered',
+    live: [...expectedChecks('covered'), 'test-node'],
+    jobs: jobsOf(COVERED_JOBS),
+  });
+  assert(
+    ids(withoutJob).join() === 'ruleset/required-no-job',
+    `test-node required with no job: got ${ids(withoutJob)}`,
+  );
 }
 
 function testLiveNoJobForBaseCheck(assert) {
   const gaps = requiredGaps({ kind: 'covered', live: expectedChecks('covered'), jobs: jobsOf(['test', 'lint']) });
-  assert(gaps.some((gap) => gap.id === 'ruleset/required-no-job'), 'a required check whose job is absent is a no-job gap');
+  assert(
+    gaps.some((gap) => gap.id === 'ruleset/required-no-job'),
+    'a required check whose job is absent is a no-job gap',
+  );
 }
 
 function testTreeCoverageJob(assert) {
   const withCoverage = repoWith(ciText({ coverage: `${sharedUses('coverage')}` }), COVERED_JUST);
-  assert(!gapIds(withCoverage).some((id) => id === 'ci/coverage' || id === 'ci/coverage-recipe'),
-    'a covered repository with the coverage job and recipe reports no coverage gap');
+  assert(
+    !gapIds(withCoverage).some((id) => id === 'ci/coverage' || id === 'ci/coverage-recipe'),
+    'a covered repository with the coverage job and recipe reports no coverage gap',
+  );
 
   const missing = gapsOf(repoWith(ciText(), COVERED_JUST));
   const coverageGap = missing.find((gap) => gap.id === 'ci/coverage');
@@ -180,55 +243,78 @@ function testStarterCoverageContract(assert) {
   });
   const coverageGaps = checkStandard(coverageRoot).gaps.map((gap) => gap.id);
   rmSync(coverageRoot, { recursive: true, force: true });
-  assert(!coverageGaps.includes('ci/coverage-recipe'),
-    'the checked-in caller CI and task-runner starters include the required coverage recipe');
+  assert(
+    !coverageGaps.includes('ci/coverage-recipe'),
+    'the checked-in caller CI and task-runner starters include the required coverage recipe',
+  );
 
   const uncoveredCi = callerCi.replace(/^  coverage:\n(?:    .*\n)+/m, '');
   const uncoveredRoot = fixture({ '.github/workflows/ci.yml': uncoveredCi, justfile });
   const uncoveredGaps = checkStandard(uncoveredRoot).gaps.map((gap) => gap.id);
   rmSync(uncoveredRoot, { recursive: true, force: true });
-  assert(uncoveredGaps.includes('ci/coverage'),
-    'without a central exception, an opted-out starter has an open ci/coverage gap');
+  assert(
+    uncoveredGaps.includes('ci/coverage'),
+    'without a central exception, an opted-out starter has an open ci/coverage gap',
+  );
 }
 
 function testTreeSharedJobs(assert) {
   const noStandard = repoWith(ciText({ omit: ['standard'] }));
-  assert(gapIds(noStandard).includes('ci/standard'), 'a missing standard job is a ci/standard gap, because standard / standard is required');
+  assert(
+    gapIds(noStandard).includes('ci/standard'),
+    'a missing standard job is a ci/standard gap, because standard / standard is required',
+  );
 }
 
 function testExtraTestJob(assert) {
   const withExtra = repoWith(ciText({ coverage: sharedUses('coverage'), testSuffixes: ['node'] }), COVERED_JUST);
   const found = gapIds(withExtra);
-  assert(!found.includes('ci/test') && !found.includes('ci/coverage'), 'a test-node job beside a plain test job adds no gap');
+  assert(
+    !found.includes('ci/test') && !found.includes('ci/coverage'),
+    'a test-node job beside a plain test job adds no gap',
+  );
 }
 
-function testRenamedOrgCaller(assert) {
-  // The legacy owner spelling stays valid for callers pinned before the
-  // organization rename; the standard owner is the one new callers use.
+function testRetiredOrgCaller(assert) {
+  // The pre-rename owner spelling is retired. A caller still pinned through it
+  // is not recognized, so the job counts as missing its pinned standard call.
   const legacy = (name) => `simpsonm09-org/repo-standard/.github/workflows/${name}.yml@${PIN}`;
-  const legacyCi = ciText({ coverage: legacy('coverage') });
-  const legacyGaps = gapIds(repoWith(legacyCi, COVERED_JUST));
-  assert(!legacyGaps.includes('ci/pin'), 'a caller pinned through the legacy organization owner is still a pinned reference');
-  assert(!legacyGaps.includes('ci/coverage'), 'the coverage job is recognized through the legacy organization owner');
+  const legacyGaps = gapIds(repoWith(ciText({ coverage: legacy('coverage') }), COVERED_JUST));
+  assert(legacyGaps.includes('ci/coverage'), 'the retired owner spelling no longer counts as the coverage call');
 
   const pinned = repoWith(ciText({ coverage: sharedUses('coverage') }), COVERED_JUST);
   const pinnedGaps = gapIds(pinned);
-  assert(!pinnedGaps.includes('ci/pin'), 'a caller pinned through the new organization owner is still a pinned reference');
-  assert(!pinnedGaps.includes('ci/coverage'), 'the coverage job is recognized through the new organization owner');
+  assert(
+    !pinnedGaps.includes('ci/pin'),
+    'a caller pinned through the current organization owner is still a pinned reference',
+  );
+  assert(!pinnedGaps.includes('ci/coverage'), 'the coverage job is recognized through the current organization owner');
 
-  const unpinned = repoWith(ciText({ coverage: 'simpsonm09-projects/repo-standard/.github/workflows/coverage.yml@main' }), COVERED_JUST);
-  assert(gapIds(unpinned).includes('ci/pin'), 'an unpinned reference through the new owner is still a ci/pin gap');
+  const unpinned = repoWith(
+    ciText({ coverage: 'simpsonm09-projects/repo-standard/.github/workflows/coverage.yml@main' }),
+    COVERED_JUST,
+  );
+  assert(gapIds(unpinned).includes('ci/pin'), 'an unpinned reference through the current owner is still a ci/pin gap');
 
-  assert(jobsCalling(parseJobs(ciText({ coverage: sharedUses('coverage') })), 'coverage', false).join() === 'coverage', 'the coverage call is found through the new owner');
+  assert(
+    jobsCalling(parseJobs(ciText({ coverage: sharedUses('coverage') })), 'coverage', false).join() === 'coverage',
+    'the coverage call is found through the current owner',
+  );
 }
 
 function testJobsCallingCoverage(assert) {
   const jobs = parseJobs(ciText({ coverage: sharedUses('coverage') }));
-  assert(jobsCalling(jobs, 'coverage', false).join() === 'coverage', 'the coverage job is found through its pinned reference');
+  assert(
+    jobsCalling(jobs, 'coverage', false).join() === 'coverage',
+    'the coverage job is found through its pinned reference',
+  );
   assert(jobsCalling(parseJobs(ciText()), 'coverage', false).length === 0, 'no coverage job, no calls');
 
   const local = parseJobs(ciText({ coverage: './.github/workflows/coverage.yml' }));
-  assert(jobsCalling(local, 'coverage', true).join() === 'coverage', 'a local reference counts in the standard repository');
+  assert(
+    jobsCalling(local, 'coverage', true).join() === 'coverage',
+    'a local reference counts in the standard repository',
+  );
   assert(jobsCalling(local, 'coverage', false).length === 0, 'a local reference does not count in another repository');
 }
 
@@ -237,58 +323,138 @@ function testRulesetGaps(assert) {
     target: 'branch',
     enforcement: 'active',
     conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } },
-    rules: [{ type: 'required_status_checks', parameters: {
-      strict_required_status_checks_policy: true,
-      required_status_checks: contexts.map((context) => ({ context })),
-    } }],
+    rules: [
+      {
+        type: 'required_status_checks',
+        parameters: {
+          strict_required_status_checks_policy: true,
+          required_status_checks: contexts.map((context) => ({ context })),
+        },
+      },
+    ],
   });
   const coveredJobs = jobsOf(COVERED_JOBS);
-  assert(rulesetGaps(live(expectedChecks('covered')), { kind: 'covered', jobs: coveredJobs }).length === 0,
-    'a live ruleset matching the covered kind is clean');
+  assert(
+    rulesetGaps(live(expectedChecks('covered')), { kind: 'covered', jobs: coveredJobs }).length === 0,
+    'a live ruleset matching the covered kind is clean',
+  );
   const gaps = rulesetGaps({ ...live([]), rules: [] }, { kind: 'covered', jobs: coveredJobs });
-  assert(gaps.filter((gap) => gap.id === 'ruleset/required-missing').length === expectedChecks('covered').length
-    && gaps.some((gap) => gap.id === 'ruleset/required-strict'),
-  'a ruleset with no required checks is missing every expected check and strict enforcement');
-  const extra = rulesetGaps(live([...expectedChecks('covered'), 'test-node']), { kind: 'covered', jobs: jobsOf(COVERED_JOBS) });
-  assert(extra.length === 1 && extra[0].id === 'ruleset/required-no-job', 'a required test-node with no job is a no-job gap');
+  assert(
+    gaps.filter((gap) => gap.id === 'ruleset/required-missing').length === expectedChecks('covered').length &&
+      gaps.some((gap) => gap.id === 'ruleset/required-strict'),
+    'a ruleset with no required checks is missing every expected check and strict enforcement',
+  );
+  const extra = rulesetGaps(live([...expectedChecks('covered'), 'test-node']), {
+    kind: 'covered',
+    jobs: jobsOf(COVERED_JOBS),
+  });
+  assert(
+    extra.length === 1 && extra[0].id === 'ruleset/required-no-job',
+    'a required test-node with no job is a no-job gap',
+  );
 
   const good = live(expectedChecks('covered'));
-  const nonStrict = rulesetGaps({ ...good, rules: [{ ...good.rules[0], parameters: {
-    ...good.rules[0].parameters, strict_required_status_checks_policy: false,
-  } }] }, { kind: 'covered', jobs: coveredJobs });
-  assert(nonStrict.some((gap) => gap.id === 'ruleset/required-strict'), 'branches must be required to be up to date');
+  const nonStrict = rulesetGaps(
+    {
+      ...good,
+      rules: [
+        {
+          ...good.rules[0],
+          parameters: {
+            ...good.rules[0].parameters,
+            strict_required_status_checks_policy: false,
+          },
+        },
+      ],
+    },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    nonStrict.some((gap) => gap.id === 'ruleset/required-strict'),
+    'branches must be required to be up to date',
+  );
   for (const enforcement of ['disabled', 'evaluate']) {
     const gaps = rulesetGaps({ ...good, enforcement }, { kind: 'covered', jobs: coveredJobs });
-    assert(gaps.some((gap) => gap.id === 'ruleset/enforcement'), `${enforcement} enforcement is not active protection`);
+    assert(
+      gaps.some((gap) => gap.id === 'ruleset/enforcement'),
+      `${enforcement} enforcement is not active protection`,
+    );
   }
   for (const conditions of [undefined, { ref_name: { include: ['refs/heads/release'], exclude: [] } }]) {
     const gaps = rulesetGaps({ ...good, conditions }, { kind: 'covered', jobs: coveredJobs });
-    assert(gaps.some((gap) => gap.id === 'ruleset/main-target'), 'missing or wrong ref target is not main protection');
+    assert(
+      gaps.some((gap) => gap.id === 'ruleset/main-target'),
+      'missing or wrong ref target is not main protection',
+    );
   }
-  const excluded = rulesetGaps({ ...good, conditions: { ref_name: { include: ['~ALL'], exclude: ['refs/heads/main'] } } }, { kind: 'covered', jobs: coveredJobs });
-  assert(excluded.some((gap) => gap.id === 'ruleset/main-target'), 'an exclusion overrides a matching inclusion');
+  const excluded = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['~ALL'], exclude: ['refs/heads/main'] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    excluded.some((gap) => gap.id === 'ruleset/main-target'),
+    'an exclusion overrides a matching inclusion',
+  );
 
   for (const include of [['~ALL'], ['~DEFAULT_BRANCH'], ['refs/heads/ma*'], ['refs/heads/main']]) {
-    const gaps = rulesetGaps({ ...good, conditions: { ref_name: { include, exclude: [] } } }, { kind: 'covered', jobs: coveredJobs });
+    const gaps = rulesetGaps(
+      { ...good, conditions: { ref_name: { include, exclude: [] } } },
+      { kind: 'covered', jobs: coveredJobs },
+    );
     assert(!gaps.some((gap) => gap.id === 'ruleset/main-target'), `${include[0]} includes main`);
   }
-  const branchStar = rulesetGaps({ ...good, conditions: { ref_name: { include: ['refs/heads/*'], exclude: [] } } }, { kind: 'covered', jobs: coveredJobs });
+  const branchStar = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['refs/heads/*'], exclude: [] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
   assert(!branchStar.some((gap) => gap.id === 'ruleset/main-target'), 'a single-star pattern includes main');
-  const malformedRange = rulesetGaps({ ...good, conditions: { ref_name: { include: ['refs/heads/[z-a]'], exclude: [] } } }, { kind: 'covered', jobs: coveredJobs });
-  assert(malformedRange.some((gap) => gap.id === 'ruleset/main-target'), 'a malformed character range produces a target gap instead of throwing');
-  const zeroDirectoryGlobstar = rulesetGaps({ ...good, conditions: { ref_name: { include: ['refs/heads/**/main'], exclude: [] } } }, { kind: 'covered', jobs: coveredJobs });
-  assert(zeroDirectoryGlobstar.some((gap) => gap.id === 'ruleset/main-target'), 'unmodeled zero-directory globstar produces a target gap');
-  const unknownPattern = rulesetGaps({ ...good, conditions: { ref_name: { include: ['refs/heads/[!m]ain'], exclude: [] } } }, { kind: 'covered', jobs: coveredJobs });
-  assert(unknownPattern.some((gap) => gap.id === 'ruleset/main-target'), 'unsupported pattern syntax cannot prove main coverage');
-  const braceInclude = rulesetGaps({ ...good, conditions: { ref_name: { include: ['refs/heads/{main,dev}'], exclude: [] } } }, { kind: 'covered', jobs: coveredJobs });
-  assert(braceInclude.some((gap) => gap.id === 'ruleset/main-target'), 'unsupported brace syntax cannot prove main coverage');
-  const braceExclude = rulesetGaps({ ...good, conditions: { ref_name: { include: ['~ALL'], exclude: ['refs/heads/{main,dev}'] } } }, { kind: 'covered', jobs: coveredJobs });
-  assert(braceExclude.some((gap) => gap.id === 'ruleset/main-target'), 'unsupported brace syntax cannot hide a possible main exclusion');
+  const malformedRange = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['refs/heads/[z-a]'], exclude: [] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    malformedRange.some((gap) => gap.id === 'ruleset/main-target'),
+    'a malformed character range produces a target gap instead of throwing',
+  );
+  const zeroDirectoryGlobstar = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['refs/heads/**/main'], exclude: [] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    zeroDirectoryGlobstar.some((gap) => gap.id === 'ruleset/main-target'),
+    'unmodeled zero-directory globstar produces a target gap',
+  );
+  const unknownPattern = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['refs/heads/[!m]ain'], exclude: [] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    unknownPattern.some((gap) => gap.id === 'ruleset/main-target'),
+    'unsupported pattern syntax cannot prove main coverage',
+  );
+  const braceInclude = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['refs/heads/{main,dev}'], exclude: [] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    braceInclude.some((gap) => gap.id === 'ruleset/main-target'),
+    'unsupported brace syntax cannot prove main coverage',
+  );
+  const braceExclude = rulesetGaps(
+    { ...good, conditions: { ref_name: { include: ['~ALL'], exclude: ['refs/heads/{main,dev}'] } } },
+    { kind: 'covered', jobs: coveredJobs },
+  );
+  assert(
+    braceExclude.some((gap) => gap.id === 'ruleset/main-target'),
+    'unsupported brace syntax cannot hide a possible main exclusion',
+  );
 
   const generated = JSON.parse(readFileSync(join(STANDARD_ROOT, 'rulesets/protect-main.json'), 'utf8'));
   const generatedGaps = rulesetGaps(generated, { kind: 'covered', jobs: coveredJobs });
-  assert(!generatedGaps.some((gap) => gap.id === 'ruleset/enforcement' || gap.id === 'ruleset/main-target'),
-    'the committed protect-main payload remains a valid active main ruleset');
+  assert(
+    !generatedGaps.some((gap) => gap.id === 'ruleset/enforcement' || gap.id === 'ruleset/main-target'),
+    'the committed protect-main payload remains a valid active main ruleset',
+  );
 }
 
 function testProtectMainSelection(assert) {
@@ -301,12 +467,18 @@ function testProtectMainSelection(assert) {
 
 function testRenamedOrgExceptions(assert) {
   const exceptions = loadExceptions(EXCEPTIONS);
-  assert(kindOf(exceptions, 'simpsonm09-projects/repo-catalog') === 'uncovered',
-    'a coverage exception stays in force after the organization rename');
-  assert(kindOf(exceptions, 'simpsonm09-projects/fixture-go') === 'covered',
-    'a repository without an exception stays covered after the rename');
-  assert(kindOf(exceptions, 'simpsonm09/repo-catalog') === 'covered',
-    'a personal fork of the same name never inherits the exception');
+  assert(
+    kindOf(exceptions, 'simpsonm09-projects/repo-catalog') === 'uncovered',
+    'a coverage exception stays in force after the organization rename',
+  );
+  assert(
+    kindOf(exceptions, 'simpsonm09-projects/fixture-go') === 'covered',
+    'a repository without an exception stays covered after the rename',
+  );
+  assert(
+    kindOf(exceptions, 'simpsonm09/repo-catalog') === 'covered',
+    'a personal fork of the same name never inherits the exception',
+  );
 }
 
 // Every coverage exception is a declaration, so it must name the reason. The two
@@ -314,7 +486,10 @@ function testRenamedOrgExceptions(assert) {
 // shared workflow. Either reason text is free, but it cannot be empty.
 function testExceptionReasons(assert) {
   const coverage = loadExceptions(EXCEPTIONS).filter((entry) => entry.checks.has('ci/coverage'));
-  assert(coverage.length >= 3, `the coverage exceptions name the repositories without a coverage job, got ${coverage.length}`);
+  assert(
+    coverage.length >= 3,
+    `the coverage exceptions name the repositories without a coverage job, got ${coverage.length}`,
+  );
   for (const entry of coverage) {
     assert(entry.repo.startsWith('simpsonm09-projects/'), `${entry.repo} is an org repository`);
     assert(entry.reason.trim().length > 0, `${entry.repo} gives a reason for having no coverage job`);
@@ -322,32 +497,79 @@ function testExceptionReasons(assert) {
 }
 
 function runCheckRepo(root, repo) {
-  return spawnSync(process.execPath, [CHECK_REPO, root, '--repo', repo, '--no-api'], { windowsHide: true, encoding: 'utf8' });
+  return spawnSync(process.execPath, [CHECK_REPO, root, '--repo', repo, '--no-api'], {
+    windowsHide: true,
+    encoding: 'utf8',
+  });
 }
 
 function testUncoveredCli(assert) {
   const plain = repoWith(ciText());
   const plainResult = runCheckRepo(plain, UNCOVERED_REPO);
   rmSync(plain, { recursive: true, force: true });
-  assert(plainResult.stdout.includes('  ci/coverage (2026-10-12)'), 'a central exception lists ci/coverage as excepted');
-  assert(!plainResult.stdout.includes('gap ci/coverage:'), 'a central ci/coverage exception clears the missing-job gap');
+  assert(
+    plainResult.stdout.includes('  ci/coverage (2026-10-12)'),
+    'a central exception lists ci/coverage as excepted',
+  );
+  assert(
+    !plainResult.stdout.includes('gap ci/coverage:'),
+    'a central ci/coverage exception clears the missing-job gap',
+  );
 
   const calls = repoWith(ciText({ coverage: sharedUses('coverage') }), COVERED_JUST);
   const callsResult = runCheckRepo(calls, UNCOVERED_REPO);
   rmSync(calls, { recursive: true, force: true });
-  assert(callsResult.stdout.includes('gap ci/coverage-unrequired:'), 'an uncovered repository that calls coverage has an open gap');
+  assert(
+    callsResult.stdout.includes('gap ci/coverage-unrequired:'),
+    'an uncovered repository that calls coverage has an open gap',
+  );
+}
+
+function testLocalExceptions(assert) {
+  const local = fixture({
+    '.github/workflows/ci.yml': ciText(),
+    'docs/exceptions.md': [
+      '# Exceptions',
+      '',
+      '| Rule | Reason | Revisit |',
+      '| --- | --- | --- |',
+      '| `ci/coverage` | Records, with no executable code under test. | 2027-01-31 |',
+      '',
+    ].join('\n'),
+  });
+  const localResult = runCheckRepo(local, UNCOVERED_REPO);
+  rmSync(local, { recursive: true, force: true });
+  assert(!localResult.stdout.includes('gap ci/coverage:'), 'a local ci/coverage exception clears the missing-job gap');
+  assert(localResult.stdout.includes('ci/coverage (2027-01-31)'), 'a local exception keeps its revisit date');
+
+  const empty = fixture({
+    '.github/workflows/ci.yml': ciText(),
+    'docs/exceptions.md': '| Rule | Reason | Revisit |\n| --- | --- | --- |\n',
+  });
+  const emptyResult = runCheckRepo(empty, UNCOVERED_REPO);
+  rmSync(empty, { recursive: true, force: true });
+  assert(
+    emptyResult.stdout.includes('gap ci/coverage:'),
+    'a local file with no valid row does not fall back to the central file',
+  );
 }
 
 function testCoveredCli(assert) {
   const missing = repoWith(ciText());
   const missingResult = runCheckRepo(missing, COVERED_REPO);
   rmSync(missing, { recursive: true, force: true });
-  assert(missingResult.stdout.includes('gap ci/coverage:'), 'a covered repository without a coverage job has an open ci/coverage gap');
+  assert(
+    missingResult.stdout.includes('gap ci/coverage:'),
+    'a covered repository without a coverage job has an open ci/coverage gap',
+  );
 
   const present = repoWith(ciText({ coverage: sharedUses('coverage') }), COVERED_JUST);
   const presentResult = runCheckRepo(present, COVERED_REPO);
   rmSync(present, { recursive: true, force: true });
-  assert(!presentResult.stdout.includes('gap ci/coverage:'), 'a covered repository with the coverage job has no ci/coverage gap');
+  assert(
+    !presentResult.stdout.includes('gap ci/coverage:'),
+    'a covered repository with the coverage job has no ci/coverage gap',
+  );
   assert(!presentResult.stdout.includes('ci/coverage-unrequired'), 'a covered repository is not flagged as uncovered');
 }
 
@@ -368,10 +590,11 @@ export function runTest() {
     testTreeSharedJobs(assert);
     testExtraTestJob(assert);
     testJobsCallingCoverage(assert);
-    testRenamedOrgCaller(assert);
+    testRetiredOrgCaller(assert);
     testRenamedOrgExceptions(assert);
     testExceptionReasons(assert);
     testUncoveredCli(assert);
+    testLocalExceptions(assert);
     testCoveredCli(assert);
     process.stdout.write(`required.test: ok (${total()} assertions)\n`);
     return 0;

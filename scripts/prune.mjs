@@ -28,7 +28,10 @@ export function prune(base = BASE) {
   const current = git(['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim();
   const keep = new Set([base, current, 'HEAD']);
   const deleted = [];
-  for (const branch of listed.stdout.split('\n').map((line) => line.trim()).filter(Boolean)) {
+  for (const branch of listed.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)) {
     if (keep.has(branch)) continue;
     if (git(['branch', '-d', branch]).status === 0) deleted.push(branch);
   }

@@ -44,7 +44,7 @@ Actions are pinned to commit SHAs and updated by Dependabot. See [`docs/pinning.
 - `.github/workflows/` holds the reusable workflows and this repository's own CI.
 - `.github/config/` holds the Flint configuration.
 - `rulesets/` holds the branch and tag rulesets as JSON.
-- `scripts/` holds the ruleset apply scripts, in bash and PowerShell, and the Node checkers and apply script.
+- `scripts/` holds the Node checkers and apply scripts that migrate to Bun TypeScript one at a time.
 - `justfile` holds this repository's task recipes.
 - `templates/` holds files to copy into a consuming repository, including the `justfile`, the README and `AGENTS.md` skeletons, the license, agent profiles, and a skill skeleton.
 - `docs/` holds the adoption, governance, documentation, local-run, pinning, task-runner, scripting, testing, validation, agent-and-skill, README, and license guides.

@@ -9,7 +9,7 @@
 
 ## Commands
 
-- `just install`, `just lint`, `just test`, `just verify`.
+- `just install`, `just fmt-check`, `just lint`, `just typecheck`, `just test`, `just verify`, `just agent-files`.
 
 ## Repo facts
 

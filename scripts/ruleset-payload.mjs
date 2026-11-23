@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Print the hard-protection or approval-only ruleset payload for one repository.
+// Print the squash-only ruleset payload for one repository.
 //
 // Usage:
 //   node scripts/ruleset-payload.mjs <ruleset.json> --level <propose|merge|full> [--repo <owner/name>]
@@ -10,31 +10,27 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadExceptions } from './lib/exceptions.mjs';
 import { COVERAGE_CONTEXT, kindOf } from './lib/required.mjs';
-import { approvalCountFor, expectedApprovalBypass } from './lib/ruleset-policy.mjs';
+import { approvalCountFor } from './lib/ruleset-policy.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EXCEPTIONS = join(HERE, '..', 'docs', 'exceptions.json');
 
 export function buildPayload(ruleset, level, kind = 'covered') {
-  const approvals = approvalCountFor(level);
+  approvalCountFor(level);
   const payload = JSON.parse(JSON.stringify(ruleset));
-  if (payload.name === 'protect-main') {
-    setCoverageContext(payload, kind);
-    payload.bypass_actors = [];
-    setApprovalCount(payload, 0);
-  } else if (payload.name === 'approval-main') {
-    payload.bypass_actors = expectedApprovalBypass(level);
-    setApprovalCount(payload, approvals);
-  }
+  if (payload.name === 'protect-main') setCoverageContext(payload, kind);
+  payload.bypass_actors = [];
+  const rule = (payload.rules ?? []).find((entry) => entry?.type === 'pull_request');
+  if (rule) setPullRequestPolicy(rule);
   return payload;
 }
 
-function setApprovalCount(payload, count) {
-  const rules = (payload.rules ?? []).filter((entry) => entry.type === 'pull_request');
-  if (rules.length !== 1 || !rules[0].parameters) {
-    throw new Error(`${payload.name} must define exactly one pull_request rule with parameters`);
-  }
-  rules[0].parameters.required_approving_review_count = count;
+// Zero required reviews, squash merges only. The level no longer changes either
+// value, so every access level gets the same integration policy.
+function setPullRequestPolicy(rule) {
+  if (!rule.parameters) throw new Error('the pull_request rule must carry parameters');
+  rule.parameters.required_approving_review_count = 0;
+  rule.parameters.allowed_merge_methods = ['squash'];
 }
 
 // The committed file lists the checks every repository reports. Only a covered
@@ -66,25 +62,35 @@ function selfTest() {
   const assert = (condition, message) => {
     if (!condition) throw new Error(message);
   };
-  const protect = { name: 'protect-main', bypass_actors: [{ actor_type: 'Integration', actor_id: 42 }],
-    rules: [{ type: 'pull_request', parameters: {} }] };
-  const approval = { name: 'approval-main', bypass_actors: [], rules: [{ type: 'pull_request', parameters: {} }] };
-  const propose = buildPayload(approval, 'propose');
-  assert(propose.rules[0].parameters.required_approving_review_count === 0, 'propose requires zero approvals');
-  assert(propose.bypass_actors.length === 1 && propose.bypass_actors[0].actor_type === 'OrganizationAdmin', 'propose has one human admin bypass');
-  assert(propose.bypass_actors[0].bypass_mode === 'pull_request', 'admin bypass is PR-only');
-  const merge = buildPayload(approval, 'merge');
-  assert(merge.rules[0].parameters.required_approving_review_count === 0, 'merge requires zero approvals');
-  const full = buildPayload(approval, 'full');
-  assert(full.rules[0].parameters.required_approving_review_count === 0, 'full has zero approvals');
-  assert(full.bypass_actors.length === 0, 'full has no approval bypass actor');
-  assert(buildPayload(buildPayload(approval, 'merge'), 'full').bypass_actors.length === 0, 'full to merge to full converges without stale actors');
-  assert(buildPayload(protect, 'merge').bypass_actors.length === 0, 'protect-main strips every bypass actor');
+  const protect = {
+    name: 'protect-main',
+    bypass_actors: [{ actor_type: 'Integration', actor_id: 42 }],
+    rules: [
+      { type: 'pull_request', parameters: { required_approving_review_count: 2, allowed_merge_methods: ['merge'] } },
+      { type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'test' }] } },
+    ],
+  };
+  const built = buildPayload(protect, 'propose');
+  assert(built.rules[0].parameters.required_approving_review_count === 0, 'every level requires zero approvals');
+  assert(built.rules[0].parameters.allowed_merge_methods.join(',') === 'squash', 'the payload allows squash only');
+  assert(built.bypass_actors.length === 0, 'the payload strips every bypass actor');
+  assert(buildPayload(protect, 'full').bypass_actors.length === 0, 'full also strips every bypass actor');
   let rejected = false;
-  try { buildPayload(approval, 'read'); } catch { rejected = true; }
+  try {
+    buildPayload(protect, 'read');
+  } catch {
+    rejected = true;
+  }
   assert(rejected, 'legacy read level fails closed');
-  const tags = buildPayload({ name: 'protect-tags' }, 'merge');
-  assert(tags.name === 'protect-tags', 'other rulesets are untouched');
+  const tags = buildPayload(
+    { name: 'protect-tags', bypass_actors: [{ actor_type: 'OrganizationAdmin' }], rules: [{ type: 'deletion' }] },
+    'merge',
+  );
+  assert(
+    tags.name === 'protect-tags' && tags.bypass_actors.length === 0,
+    'tag protection is untouched except for the bypass list',
+  );
+  assert(tags.rules.length === 1 && tags.rules[0].type === 'deletion', 'tag protection keeps its rules');
 }
 
 // The required contexts of the protect-main payload, in order.
@@ -101,7 +107,10 @@ function selfTestKinds() {
     name: 'protect-main',
     rules: [
       { type: 'pull_request', parameters: {} },
-      { type: 'required_status_checks', parameters: { required_status_checks: [{ context: 'lint / flint' }, { context: 'test' }] } },
+      {
+        type: 'required_status_checks',
+        parameters: { required_status_checks: [{ context: 'lint / flint' }, { context: 'test' }] },
+      },
     ],
   };
 
@@ -111,15 +120,25 @@ function selfTestKinds() {
 
   const uncovered = buildPayload(covered, 'full', 'uncovered');
   assert(!contextsOf(uncovered).includes(COVERAGE_CONTEXT), 'an uncovered repository does not require coverage');
-  assert(contextsOf(uncovered).join(',') === 'lint / flint,test', 'an uncovered repository keeps exactly the base checks');
+  assert(
+    contextsOf(uncovered).join(',') === 'lint / flint,test',
+    'an uncovered repository keeps exactly the base checks',
+  );
 
-  assert(contextsOf(buildPayload(base, 'full')).includes(COVERAGE_CONTEXT),
-    'without a kind the payload is for a covered repository');
-  assert(contextsOf(buildPayload(covered, 'full', 'covered')).filter((c) => c === COVERAGE_CONTEXT).length === 1,
-    'a covered repository never duplicates coverage');
+  assert(
+    contextsOf(buildPayload(base, 'full')).includes(COVERAGE_CONTEXT),
+    'without a kind the payload is for a covered repository',
+  );
+  assert(
+    contextsOf(buildPayload(covered, 'full', 'covered')).filter((c) => c === COVERAGE_CONTEXT).length === 1,
+    'a covered repository never duplicates coverage',
+  );
 
   const tags = buildPayload({ name: 'protect-tags', rules: base.rules }, 'full', 'uncovered');
-  assert(contextsOf(tags).includes(COVERAGE_CONTEXT) === false && contextsOf(tags).length === 2, 'protect-tags is untouched');
+  assert(
+    contextsOf(tags).includes(COVERAGE_CONTEXT) === false && contextsOf(tags).length === 2,
+    'protect-tags is untouched',
+  );
 }
 
 function runSelfTest() {

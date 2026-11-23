@@ -77,11 +77,21 @@ export function resolveLevel(catalog, repoName) {
   if (!entry) return { repo: repoName, tier: null, level: FALLBACK_LEVEL, source: 'unknown' };
   if (Object.hasOwn(entry, 'agentAccess')) {
     const valid = LEVELS.includes(entry.agentAccess);
-    return { repo: repoName, tier: entry.tier, level: valid ? entry.agentAccess : FALLBACK_LEVEL, source: valid ? 'override' : 'invalid-override' };
+    return {
+      repo: repoName,
+      tier: entry.tier,
+      level: valid ? entry.agentAccess : FALLBACK_LEVEL,
+      source: valid ? 'override' : 'invalid-override',
+    };
   }
   const configured = catalog.agentAccessDefaults?.[entry.tier];
   const valid = LEVELS.includes(configured);
-  return { repo: repoName, tier: entry.tier, level: valid ? configured : FALLBACK_LEVEL, source: valid ? 'tier' : 'tier-fallback' };
+  return {
+    repo: repoName,
+    tier: entry.tier,
+    level: valid ? configured : FALLBACK_LEVEL,
+    source: valid ? 'tier' : 'tier-fallback',
+  };
 }
 
 export function allows(level, capability) {
@@ -201,7 +211,8 @@ function ignoreErrors(policy) {
   if (!Array.isArray(policy.ignore)) return [...errors, 'ignore is not an array'];
   const names = new Set();
   const identities = new Set();
-  for (const [index, entry] of policy.ignore.entries()) errors.push(...ignoreEntryErrors(entry, index, names, identities));
+  for (const [index, entry] of policy.ignore.entries())
+    errors.push(...ignoreEntryErrors(entry, index, names, identities));
   return errors;
 }
 
@@ -209,7 +220,8 @@ function ignoreEntryErrors(entry, index, names, identities) {
   const label = `ignore[${index}]`;
   if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return [`${label} is not an object`];
   const errors = [];
-  if (!Object.keys(entry).every((key) => ['name', 'reason', 'agentAccessIgnore'].includes(key))) errors.push(`${label} has an unknown field`);
+  if (!Object.keys(entry).every((key) => ['name', 'reason', 'agentAccessIgnore'].includes(key)))
+    errors.push(`${label} has an unknown field`);
   if (typeof entry.name !== 'string' || !REPOSITORY_PATTERN.test(entry.name)) errors.push(`${label}.name is invalid`);
   else {
     const name = entry.name.toLowerCase();
@@ -222,7 +234,8 @@ function ignoreEntryErrors(entry, index, names, identities) {
 
 function ignoreIdentityErrors(entry, label, identities) {
   if (entry.agentAccessIgnore === undefined) return [];
-  if (!Array.isArray(entry.agentAccessIgnore) || entry.agentAccessIgnore.length === 0) return [`${label}.agentAccessIgnore is not a non-empty array`];
+  if (!Array.isArray(entry.agentAccessIgnore) || entry.agentAccessIgnore.length === 0)
+    return [`${label}.agentAccessIgnore is not a non-empty array`];
   const errors = [];
   for (const [index, identity] of entry.agentAccessIgnore.entries()) {
     const item = `${label}.agentAccessIgnore[${index}]`;
@@ -231,7 +244,8 @@ function ignoreIdentityErrors(entry, label, identities) {
       continue;
     }
     const normalized = identity.toLowerCase();
-    if (typeof entry.name === 'string' && entry.name.toLowerCase() !== identity.split('/')[1].toLowerCase()) errors.push(`${item} does not match ${label}.name`);
+    if (typeof entry.name === 'string' && entry.name.toLowerCase() !== identity.split('/')[1].toLowerCase())
+      errors.push(`${item} does not match ${label}.name`);
     if (identities.has(normalized)) errors.push(`${item} duplicates an earlier identity`);
     identities.add(normalized);
   }
@@ -244,12 +258,16 @@ function trustedIgnore(policy) {
 
 function isIgnored(ignore, identity) {
   return (trustedIgnore(ignore)?.ignore ?? []).some((entry) =>
-    (entry.agentAccessIgnore ?? []).some((candidate) => candidate.toLowerCase() === `${identity.owner}/${identity.repo}`));
+    (entry.agentAccessIgnore ?? []).some(
+      (candidate) => candidate.toLowerCase() === `${identity.owner}/${identity.repo}`,
+    ),
+  );
 }
 
 function ownedRepositoriesErrors(policy, ownedForks) {
   if (policy === null || typeof policy !== 'object' || Array.isArray(policy)) return ['not an object'];
-  if (!ownedForks || ownedForksErrors(ownedForks).length !== 0) return ['the owned-fork policy is unavailable for collision checks'];
+  if (!ownedForks || ownedForksErrors(ownedForks).length !== 0)
+    return ['the owned-fork policy is unavailable for collision checks'];
   const errors = [];
   if (!Object.keys(policy).every((key) => key === 'repositories')) errors.push('an unknown top-level field');
   if (!Array.isArray(policy.repositories)) return [...errors, 'repositories is not an array'];
@@ -274,12 +292,14 @@ function ownedRepositoryEntryErrors(entry, index, occupied, seen) {
   const label = `repositories[${index}]`;
   if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return [`${label} is not an object`];
   const errors = [];
-  if (!Object.keys(entry).every((key) => ['repository', 'agentAccess'].includes(key))) errors.push(`${label} has an unknown field`);
+  if (!Object.keys(entry).every((key) => ['repository', 'agentAccess'].includes(key)))
+    errors.push(`${label} has an unknown field`);
   if (!isFullyQualified(entry.repository)) {
     errors.push(`${label}.repository is not an owner/repository identity`);
   } else {
     const identity = entry.repository.toLowerCase();
-    if (entry.repository.split('/')[0].toLowerCase() !== OWNED_OWNER) errors.push(`${label}.repository is not owned by ${OWNED_OWNER}`);
+    if (entry.repository.split('/')[0].toLowerCase() !== OWNED_OWNER)
+      errors.push(`${label}.repository is not owned by ${OWNED_OWNER}`);
     if (seen.has(identity)) errors.push(`${label}.repository duplicates an earlier entry`);
     if (occupied.has(identity)) errors.push(`${label}.repository collides with an owned-fork target or upstream`);
     seen.add(identity);
@@ -329,8 +349,11 @@ function ownedForkEntryErrors(entry, index, seen) {
     errors.push(`${label}.repository is not owned by ${OWNED_OWNER}`);
   }
   if (!isFullyQualified(entry.upstream)) errors.push(`${label}.upstream is not an owner/repository identity`);
-  if (isFullyQualified(entry.repository) && isFullyQualified(entry.upstream)
-    && entry.repository.toLowerCase() === entry.upstream.toLowerCase()) {
+  if (
+    isFullyQualified(entry.repository) &&
+    isFullyQualified(entry.upstream) &&
+    entry.repository.toLowerCase() === entry.upstream.toLowerCase()
+  ) {
     errors.push(`${label}.repository and ${label}.upstream are not distinct`);
   }
   if (entry.agentAccess !== 'propose') errors.push(`${label}.agentAccess is not propose`);
@@ -380,7 +403,13 @@ export function resolveOwnedFork(ownedForks, owner, repo) {
   if (!identity) return { owned: false };
   for (const fork of trustedOwnedForks(ownedForks)?.forks ?? []) {
     if (typeof fork?.repository === 'string' && fork.repository.toLowerCase() === identity) {
-      return { owned: true, repository: fork.repository, upstream: fork.upstream, level: 'propose', source: 'owned-fork' };
+      return {
+        owned: true,
+        repository: fork.repository,
+        upstream: fork.upstream,
+        level: 'propose',
+        source: 'owned-fork',
+      };
     }
   }
   return { owned: false };
@@ -405,7 +434,15 @@ function destinationIdentity(owner, repo) {
 // 5. an owned-fork target -> owned-fork, `propose`
 // 6. a recorded upstream -> upstream, internal read baseline
 // 7. anything else -> unknown, internal read baseline
-export function resolveDestination({ roster, ownedForks, ownedRepositories, ignore, localRepo, host, destination } = {}) {
+export function resolveDestination({
+  roster,
+  ownedForks,
+  ownedRepositories,
+  ignore,
+  localRepo,
+  host,
+  destination,
+} = {}) {
   const unresolved = { kind: 'unknown', owner: null, repo: null, level: FALLBACK_LEVEL, source: 'unknown' };
   if (typeof host !== 'string' || host.toLowerCase() !== GITHUB_HOST) return unresolved;
   if (!trustedIgnore(ignore)) return { ...unresolved, source: 'ignore-unavailable' };
@@ -416,11 +453,24 @@ export function resolveDestination({ roster, ownedForks, ownedRepositories, igno
   if (governed) return governed;
   const fork = resolveOwnedFork(ownedForks, identity.owner, identity.repo);
   if (fork.owned) {
-    return { kind: 'owned-fork', owner: identity.owner, repo: identity.repo, level: fork.level, source: 'owned-fork', upstream: fork.upstream };
+    return {
+      kind: 'owned-fork',
+      owner: identity.owner,
+      repo: identity.repo,
+      level: fork.level,
+      source: 'owned-fork',
+      upstream: fork.upstream,
+    };
   }
   const ownedRepository = resolveOwnedRepository(ownedRepositories, identity.owner, identity.repo, ownedForks);
   if (ownedRepository.owned) {
-    return { kind: 'owned-repository', owner: identity.owner, repo: identity.repo, level: ownedRepository.level, source: 'owned-repository' };
+    return {
+      kind: 'owned-repository',
+      owner: identity.owner,
+      repo: identity.repo,
+      level: ownedRepository.level,
+      source: 'owned-repository',
+    };
   }
   if (isRecordedUpstream(ownedForks, identity)) {
     return { kind: 'upstream', owner: identity.owner, repo: identity.repo, level: FALLBACK_LEVEL, source: 'upstream' };
@@ -444,7 +494,13 @@ function matchGoverned(roster, ownedForks, localRepo, identity) {
 }
 
 function governedAt(roster, declared, identity, source) {
-  return { kind: 'org', owner: identity.owner, repo: identity.repo, level: resolveLevel(roster, declared).level, source };
+  return {
+    kind: 'org',
+    owner: identity.owner,
+    repo: identity.repo,
+    level: resolveLevel(roster, declared).level,
+    source,
+  };
 }
 
 function isRecordedUpstream(ownedForks, identity) {
@@ -499,15 +555,19 @@ function inconsistentIntent(operation, capability) {
 // whose operation is a write cannot take that path: the mismatch denies.
 export function decideTarget(target = {}, intent = {}) {
   const capability = intent?.capability ?? null;
-  if (target?.source === 'ignore-unavailable') return verdict(false, capability, 'the committed ignore policy is unavailable');
+  if (target?.source === 'ignore-unavailable')
+    return verdict(false, capability, 'the committed ignore policy is unavailable');
   const kind = DESTINATION_KINDS.includes(target?.kind) ? target.kind : 'unknown';
-  if (kind === 'ignored' || capability === FORBIDDEN_CAPABILITY) return verdict(false, capability, kind === 'ignored' ? 'ignored destination' : 'forbidden action');
+  if (kind === 'ignored' || capability === FORBIDDEN_CAPABILITY)
+    return verdict(false, capability, kind === 'ignored' ? 'ignored destination' : 'forbidden action');
   if (inconsistentIntent(intent?.operation, capability)) {
     return verdict(false, capability, 'the operation and the capability disagree about writing');
   }
   if (capability === null) return decideReadOnly(intent);
   if (!KNOWN_CAPABILITIES.has(capability)) return verdict(false, capability, 'unknown capability');
-  return kind === 'org' ? decideOrgTarget(target, intent, capability) : decideOtherTarget(kind, target, intent, capability);
+  return kind === 'org'
+    ? decideOrgTarget(target, intent, capability)
+    : decideOtherTarget(kind, target, intent, capability);
 }
 
 function decideOrgTarget(target, intent, capability) {
@@ -569,7 +629,8 @@ function decideMainPush(intent) {
 // repository identity fields is the observed branch-only shorthand; once either
 // identity field is present, both must match an accepted repository.
 function decideOpenPr(target, intent) {
-  if (intent?.resolved !== true) return verdict(false, 'openPr', 'the destination or the pull request sides are unresolved');
+  if (intent?.resolved !== true)
+    return verdict(false, 'openPr', 'the destination or the pull request sides are unresolved');
   if (!sameRepository(intent.base, target)) return verdict(false, 'openPr', 'the base is another repository');
   if (!sameRepository(intent.head, target) && !(target.kind === 'org' && samePairedFork(intent.head, target))) {
     return verdict(false, 'openPr', 'the head is another repository');
@@ -578,9 +639,14 @@ function decideOpenPr(target, intent) {
 }
 
 function samePairedFork(side, target) {
-  return side !== null && side !== undefined
-    && typeof side.owner === 'string' && side.owner.toLowerCase() === OWNED_OWNER
-    && typeof side.repo === 'string' && side.repo.toLowerCase() === target.repo;
+  return (
+    side !== null &&
+    side !== undefined &&
+    typeof side.owner === 'string' &&
+    side.owner.toLowerCase() === OWNED_OWNER &&
+    typeof side.repo === 'string' &&
+    side.repo.toLowerCase() === target.repo
+  );
 }
 
 function sameRepository(side, target) {
@@ -627,18 +693,34 @@ const GH_OPEN_PR_VERBS = {
 function isOpenPrManagement(parts) {
   if (!Object.hasOwn(GH_OPEN_PR_VERBS, parts[1]) || !GH_OPEN_PR_VERBS[parts[1]].has(parts[2])) return false;
   if (parts[1] === 'pr' && parts[2] === 'review') return isSafeReview(parts);
-  if ((parts[1] === 'pr' && ['create', 'edit'].includes(parts[2]))
-    || (parts[1] === 'issue' && parts[2] === 'create')) {
+  if ((parts[1] === 'pr' && ['create', 'edit'].includes(parts[2])) || (parts[1] === 'issue' && parts[2] === 'create')) {
     return !hasMilestoneOperand(parts);
   }
   return true;
 }
 
 function hasMilestoneOperand(parts) {
-  return hasCommandOption(parts, ['-m', '--milestone', '--remove-milestone'], [
-    '--title', '-t', '--body', '-b', '--base', '-B', '--head', '-H', '--assignee', '-a',
-    '--label', '-l', '--reviewer', '-r', '--project',
-  ]);
+  return hasCommandOption(
+    parts,
+    ['-m', '--milestone', '--remove-milestone'],
+    [
+      '--title',
+      '-t',
+      '--body',
+      '-b',
+      '--base',
+      '-B',
+      '--head',
+      '-H',
+      '--assignee',
+      '-a',
+      '--label',
+      '-l',
+      '--reviewer',
+      '-r',
+      '--project',
+    ],
+  );
 }
 
 const REVIEW_VALUE_OPTIONS = new Set(['--body', '-b', '--body-file', '-F', '--repo', '-R']);
@@ -662,7 +744,13 @@ function isSafeReview(parts) {
 function hasCommandOption(parts, flags, valueOptions) {
   for (let index = 3; index < parts.length; index += 1) {
     const part = parts[index];
-    if (flags.some((flag) => part === flag || part.startsWith(`${flag}=`) || (flag === '-m' && part.startsWith('-m') && part.length > 2))) return true;
+    if (
+      flags.some(
+        (flag) =>
+          part === flag || part.startsWith(`${flag}=`) || (flag === '-m' && part.startsWith('-m') && part.length > 2),
+      )
+    )
+      return true;
     if (valueOptions.includes(part)) index += 1;
   }
   return false;
@@ -701,7 +789,8 @@ function isUnmodeledGh(parts) {
   if (Object.hasOwn(GH_ADMIN_VERBS, parts[1]) && GH_ADMIN_VERBS[parts[1]].includes(parts[2])) return false;
   if (parts[1] === 'api') return hasUnknownApiMethod(parts);
   if (parts[1] === 'status') return false;
-  if (parts[1] === 'search') return !['code', 'commits', 'issues', 'prs', 'repos', 'topics', 'users'].includes(parts[2]);
+  if (parts[1] === 'search')
+    return !['code', 'commits', 'issues', 'prs', 'repos', 'topics', 'users'].includes(parts[2]);
   if (Object.hasOwn(GH_READ_GROUP_VERBS, parts[1]) && GH_READ_GROUP_VERBS[parts[1]].has(parts[2])) return false;
   return true;
 }
@@ -869,7 +958,15 @@ export function classify(command, remoteUrl) {
 function tokenize(command) {
   if (typeof command !== 'string') return { parts: [], unsupported: false };
   const tokens = [];
-  const state = { token: '', quote: null, started: false, unsupported: false, tokenUnsupported: false, firstTokenUnsupported: false, firstTokenPending: true };
+  const state = {
+    token: '',
+    quote: null,
+    started: false,
+    unsupported: false,
+    tokenUnsupported: false,
+    firstTokenUnsupported: false,
+    firstTokenPending: true,
+  };
   for (const char of command) consumeCommandChar(tokens, state, char);
   if (state.quote) return null;
   if (state.started) finishCommandToken(tokens, state);
@@ -950,19 +1047,28 @@ function normalizeExecutable(executable) {
 }
 
 function isUnsupportedShellChar(char, tokenStarted) {
-  return ['$', '`', '{', '}', '(', ')', '<', '>', ';', '&', '|', '*', '?', '[', ']'].includes(char) || (char === '~' && !tokenStarted);
+  return (
+    ['$', '`', '{', '}', '(', ')', '<', '>', ';', '&', '|', '*', '?', '[', ']'].includes(char) ||
+    (char === '~' && !tokenStarted)
+  );
 }
 
 // A null classification needs no capability, so it is allowed at every level.
 export function decide(level, command, remoteUrl) {
   const capability = classify(command, remoteUrl);
-  return capability === null ? { capability, allowed: true } : { capability, allowed: capability !== FORBIDDEN_CAPABILITY && allows(level, capability) };
+  return capability === null
+    ? { capability, allowed: true }
+    : { capability, allowed: capability !== FORBIDDEN_CAPABILITY && allows(level, capability) };
 }
 
 function isForbiddenCommand(parts) {
   if (parts[0] !== 'gh') return false;
-  if (parts[1] === 'pr' && parts[2] === 'merge'
-    && parts.slice(3).some((part) => part === '--admin' || part.startsWith('--admin='))) return true;
+  if (
+    parts[1] === 'pr' &&
+    parts[2] === 'merge' &&
+    parts.slice(3).some((part) => part === '--admin' || part.startsWith('--admin='))
+  )
+    return true;
   if (parts[1] === 'pr' && parts[2] === 'review' && !isSafeReview(parts)) return true;
   return parts[1] === 'api' && isForbiddenReviewApi(parts);
 }
@@ -970,7 +1076,10 @@ function isForbiddenCommand(parts) {
 function hasForbiddenReviewWrite(parts) {
   for (let index = 3; index < parts.length; index += 1) {
     if (REVIEW_VALUE_OPTIONS.has(parts[index])) index += 1;
-    else if (['--approve', '-a', '--dismiss'].some((flag) => parts[index] === flag || parts[index].startsWith(`${flag}=`))) return true;
+    else if (
+      ['--approve', '-a', '--dismiss'].some((flag) => parts[index] === flag || parts[index].startsWith(`${flag}=`))
+    )
+      return true;
   }
   return false;
 }
@@ -983,7 +1092,9 @@ function isForbiddenReviewApi(parts) {
   if (!endpoints.some((endpoint) => isGraphqlEndpointToken(endpoint.path))) return false;
   const payload = parts.slice(2).join(' ');
   if (/(?:query\s*=\s*|--input(?:=|\s+)|-F?\s+query\s*=)[^\s]*@|--input(?:=|\s+)/i.test(payload)) return true;
-  return /\bmutation\b[\s\S]*\b[\w]*(?:pullrequestreview|reviewthread|reviewcomment|reviewrequests?)[\w]*\b/i.test(payload);
+  return /\bmutation\b[\s\S]*\b[\w]*(?:pullrequestreview|reviewthread|reviewcomment|reviewrequests?)[\w]*\b/i.test(
+    payload,
+  );
 }
 
 function normalizeApiEndpointToken(token) {
@@ -992,10 +1103,17 @@ function normalizeApiEndpointToken(token) {
   const endpointLike = absolute || /^(?:\/|\.|%|repos[/%]|graphql(?:[/?#]|$))/i.test(token);
   if (!endpointLike) return { path: '', ambiguous: false };
   const pathToken = absolute && canonicalAbsolute ? token.slice('https://api.github.com'.length) : token;
-  if ((absolute && !canonicalAbsolute) || pathToken.includes('\\') || pathToken.includes('//') || /%|(?:^|\/)\.{1,2}(?:\/|$)/.test(pathToken)) return { path: '', ambiguous: true };
+  if (
+    (absolute && !canonicalAbsolute) ||
+    pathToken.includes('\\') ||
+    pathToken.includes('//') ||
+    /%|(?:^|\/)\.{1,2}(?:\/|$)/.test(pathToken)
+  )
+    return { path: '', ambiguous: true };
   try {
     const url = new URL(absolute ? token : `https://api.github.com/${token.replace(/^\//, '')}`);
-    if (url.origin.toLowerCase() !== 'https://api.github.com' || url.username || url.password) return { path: '', ambiguous: true };
+    if (url.origin.toLowerCase() !== 'https://api.github.com' || url.username || url.password)
+      return { path: '', ambiguous: true };
     return { path: `${url.pathname}${url.search}`, ambiguous: false };
   } catch {
     return { path: '', ambiguous: true };
@@ -1028,7 +1146,10 @@ export function selfTest() {
   assert(resolveLevel(fixture, 'feature-default').level === 'propose', 'feature default');
   const override = resolveLevel(fixture, 'override');
   assert(override.level === 'merge' && override.source === 'override', 'per-repo override');
-  assert(resolveLevel(fixture, 'legacy').level === 'read', 'an invalid legacy default falls back to the internal read baseline');
+  assert(
+    resolveLevel(fixture, 'legacy').level === 'read',
+    'an invalid legacy default falls back to the internal read baseline',
+  );
   const unknown = resolveLevel(fixture, 'not-listed');
   assert(unknown.level === FALLBACK_LEVEL && unknown.source === 'unknown', 'unknown repository');
 
@@ -1191,7 +1312,10 @@ function assertPushScope(assert, fork, org, renamedOrg) {
     ['git push origin main', '', 'pushMain'],
   ];
   for (const [command, remoteUrl, expected] of scoped) {
-    assert(classify(command, remoteUrl) === expected, `classify ${JSON.stringify(command)} @ ${remoteUrl} -> ${expected}`);
+    assert(
+      classify(command, remoteUrl) === expected,
+      `classify ${JSON.stringify(command)} @ ${remoteUrl} -> ${expected}`,
+    );
   }
 
   const decided = [
@@ -1204,7 +1328,10 @@ function assertPushScope(assert, fork, org, renamedOrg) {
     ['full', 'git push --dry-run origin main', renamedOrg, true],
   ];
   for (const [level, command, remoteUrl, expected] of decided) {
-    assert(decide(level, command, remoteUrl).allowed === expected, `decide ${level} ${JSON.stringify(command)} @ ${remoteUrl} -> ${expected}`);
+    assert(
+      decide(level, command, remoteUrl).allowed === expected,
+      `decide ${level} ${JSON.stringify(command)} @ ${remoteUrl} -> ${expected}`,
+    );
   }
 }
 
@@ -1221,11 +1348,15 @@ function assertDestinationPolicy(assert) {
     agentAccessDefaults: { fixture: 'read' },
     repos: [{ name: 'demo', tier: 'fixture', agentAccess: 'propose' }],
   };
-  const at = (localRepo, destination, host = 'github.com') => resolveDestination({ roster, ownedForks, ignore: { ignore: [] }, localRepo, host, destination });
+  const at = (localRepo, destination, host = 'github.com') =>
+    resolveDestination({ roster, ownedForks, ignore: { ignore: [] }, localRepo, host, destination });
 
   assert(at('demo', 'simpsonm09-org/demo').kind === 'org', 'the organization repository is org');
   const personal = at('demo', 'simpsonm09/demo');
-  assert(personal.kind === 'org' && personal.source === 'personal-fork', 'the personal push fork follows the org level');
+  assert(
+    personal.kind === 'org' && personal.source === 'personal-fork',
+    'the personal push fork follows the org level',
+  );
   assert(at('demo', 'simpsonm09-org/not-listed').kind === 'unknown', 'an unlisted repository is unknown');
   assert(at('demo', 'acme/demo').kind === 'unknown', 'a third-party repository with the same name is unknown');
   assert(at('pstack-max', 'simpsonm09/pstack-max').kind === 'owned-fork', 'an owned fork is its own kind');
@@ -1245,27 +1376,57 @@ function assertDestinationPolicy(assert) {
   });
 
   assert(decideTarget(owned, push()).allowed === true, 'an owned fork allows a non-default branch push');
-  assert(decideTarget(owned, push({ refs: [{ kind: 'branch', name: 'main', isDefault: true }] })).allowed === false, 'an owned fork denies the default branch');
-  assert(decideTarget(owned, push({ refs: [{ kind: 'tag', name: 'v1', isDefault: false }] })).allowed === false, 'an owned fork denies a tag');
+  assert(
+    decideTarget(owned, push({ refs: [{ kind: 'branch', name: 'main', isDefault: true }] })).allowed === false,
+    'an owned fork denies the default branch',
+  );
+  assert(
+    decideTarget(owned, push({ refs: [{ kind: 'tag', name: 'v1', isDefault: false }] })).allowed === false,
+    'an owned fork denies a tag',
+  );
   assert(decideTarget(owned, push({ force: true })).allowed === false, 'an owned fork denies a force push');
   assert(decideTarget(owned, push({ delete: true })).allowed === false, 'an owned fork denies a deletion');
   assert(decideTarget(owned, push({ refs: [] })).allowed === false, 'an owned fork denies an unresolved ref');
-  assert(decideTarget(owned, { ...push(), capability: 'pushMain' }).allowed === false, 'an owned fork denies a main push');
+  assert(
+    decideTarget(owned, { ...push(), capability: 'pushMain' }).allowed === false,
+    'an owned fork denies a main push',
+  );
   assert(decideTarget(owned, { ...push(), capability: 'mergePr' }).allowed === false, 'an owned fork denies a merge');
-  assert(decideTarget(owned, { ...push(), capability: 'admin' }).allowed === false, 'an owned fork denies an admin verb');
+  assert(
+    decideTarget(owned, { ...push(), capability: 'admin' }).allowed === false,
+    'an owned fork denies an admin verb',
+  );
   const crossRepo = { ...push(), capability: 'openPr', base: { owner: 'acme', repo: 'upstream-lib', branch: 'main' } };
   assert(decideTarget(owned, crossRepo).allowed === false, 'an owned fork denies a cross-repository pull request');
   const sameRepo = { ...push(), capability: 'openPr', base: { branch: 'main' } };
   assert(decideTarget(owned, sameRepo).allowed === true, 'an owned fork allows a pull request in the same repository');
-  assert(decideTarget(at('pstack-max', 'acme/upstream-lib'), push()).allowed === false, 'an upstream denies a branch push');
-  assert(decideTarget(at('pstack-max', 'acme/other'), { capability: null, readOnly: true, resolved: true }).allowed === true, 'an unknown destination allows a read');
-  assert(decideTarget(at('pstack-max', 'acme/other'), { capability: null, readOnly: false, resolved: true }).allowed === false, 'an unknown destination denies an unqualified command');
+  assert(
+    decideTarget(at('pstack-max', 'acme/upstream-lib'), push()).allowed === false,
+    'an upstream denies a branch push',
+  );
+  assert(
+    decideTarget(at('pstack-max', 'acme/other'), { capability: null, readOnly: true, resolved: true }).allowed === true,
+    'an unknown destination allows a read',
+  );
+  assert(
+    decideTarget(at('pstack-max', 'acme/other'), { capability: null, readOnly: false, resolved: true }).allowed ===
+      false,
+    'an unknown destination denies an unqualified command',
+  );
 
   const writingWithoutCapability = { ...push(), capability: null, readOnly: true };
-  assert(decideTarget(owned, writingWithoutCapability).allowed === false, 'a write operation with no capability is inconsistent and denied');
+  assert(
+    decideTarget(owned, writingWithoutCapability).allowed === false,
+    'a write operation with no capability is inconsistent and denied',
+  );
 
-  const foreignPolicy = { forks: [{ repository: 'evil/pstack-max', upstream: 'acme/upstream-lib', agentAccess: 'propose' }] };
-  assert(resolveOwnedFork(foreignPolicy, 'evil', 'pstack-max').owned === false, 'a policy whose owner the validator rejects grants nothing');
+  const foreignPolicy = {
+    forks: [{ repository: 'evil/pstack-max', upstream: 'acme/upstream-lib', agentAccess: 'propose' }],
+  };
+  assert(
+    resolveOwnedFork(foreignPolicy, 'evil', 'pstack-max').owned === false,
+    'a policy whose owner the validator rejects grants nothing',
+  );
 }
 
 // One table for the value-taking flags, so the parser stays a loop rather than a
@@ -1336,8 +1497,12 @@ function runSelfTest() {
 }
 
 function usageAndExit() {
-  process.stderr.write('usage: agent-access <repo-name> [--catalog <path>] [--json] [--allows <capability>] [--command "<shell command>"] [--remote-url <url>]\n');
-  process.stderr.write('       agent-access <repo-name> --host <host> --destination <owner/repo> --intent <json> [--catalog-dir <path>] [--json]\n');
+  process.stderr.write(
+    'usage: agent-access <repo-name> [--catalog <path>] [--json] [--allows <capability>] [--command "<shell command>"] [--remote-url <url>]\n',
+  );
+  process.stderr.write(
+    '       agent-access <repo-name> --host <host> --destination <owner/repo> --intent <json> [--catalog-dir <path>] [--json]\n',
+  );
   process.exit(2);
 }
 
@@ -1360,7 +1525,15 @@ function runDestinationMode(args) {
     process.stderr.write('agent-access: cannot read the committed ignore policy, denying remote writes\n');
     process.exit(2);
   }
-  const target = resolveDestination({ roster, ownedForks, ownedRepositories, ignore, localRepo: args.repo, host: args.host, destination: args.destination });
+  const target = resolveDestination({
+    roster,
+    ownedForks,
+    ownedRepositories,
+    ignore,
+    localRepo: args.repo,
+    host: args.host,
+    destination: args.destination,
+  });
   const outcome = decideTarget(target, intent);
   if (args.json) process.stdout.write(`${JSON.stringify({ ...target, intent, ...outcome })}\n`);
   process.exit(outcome.allowed ? 0 : 1);
@@ -1416,8 +1589,12 @@ function validIntentCapability(capability) {
 }
 
 function hasOnly(value, keys) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    && Object.keys(value).every((key) => keys.includes(key));
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).every((key) => keys.includes(key))
+  );
 }
 
 function isOptionalBoolean(value) {
@@ -1446,9 +1623,7 @@ function isSide(value) {
 
 function loadCatalogFromArgs(args) {
   try {
-    return args.catalog
-      ? loadCatalog(args.catalog)
-      : loadCommittedCatalog() ?? loadCatalog(DEFAULT_CATALOG);
+    return args.catalog ? loadCatalog(args.catalog) : (loadCommittedCatalog() ?? loadCatalog(DEFAULT_CATALOG));
   } catch {
     process.stderr.write('agent-access: cannot read the catalog, denying remote writes\n');
     process.exit(2);

@@ -112,7 +112,10 @@ function checkGenerated(root, ops, errors) {
 function checkTwins(root, ops, errors, notices) {
   for (const op of ops.operations ?? []) {
     if ((op.kind ?? 'portable') !== 'twin') continue;
-    const sides = [['windows', op.windows], ['posix', op.posix]].filter(([, rel]) => rel);
+    const sides = [
+      ['windows', op.windows],
+      ['posix', op.posix],
+    ].filter(([, rel]) => rel);
     for (const [side, rel] of sides) checkTwinSide(root, op, side, rel, errors);
     if (sides.length < 2) continue;
     const results = {};

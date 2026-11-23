@@ -115,7 +115,8 @@ function bindings(toks) {
 
   // `spawn = spawnSync`, in a default or an assignment, binds spawn to the same function.
   toks.forEach((rhs, k) => {
-    if (k < 2 || rhs.type !== 'id' || !fns.has(rhs.value) || !isP(toks[k - 1], '=') || toks[k - 2].type !== 'id') return;
+    if (k < 2 || rhs.type !== 'id' || !fns.has(rhs.value) || !isP(toks[k - 1], '=') || toks[k - 2].type !== 'id')
+      return;
     if (['(', '.', '['].some((v) => isP(toks[k + 1], v))) return;
     fns.set(toks[k - 2].value, fns.get(rhs.value));
   });
@@ -142,7 +143,14 @@ function addIdentifierCalls(toks, k, { modules, fns }, add) {
 // The call in `require('node:child_process').spawnSync(`, read from the module string at toks[k].
 function addRequiredModuleCall(toks, k, add) {
   const t = toks[k];
-  if (t.type !== 'str' || !MODULES.has(nameOf(t)) || !isP(toks[k - 1], '(') || !isP(toks[k + 1], ')') || !isKeyword(toks[k - 2])) return;
+  if (
+    t.type !== 'str' ||
+    !MODULES.has(nameOf(t)) ||
+    !isP(toks[k - 1], '(') ||
+    !isP(toks[k + 1], ')') ||
+    !isKeyword(toks[k - 2])
+  )
+    return;
   const member = memberCallAt(toks, k + 2);
   if (member) add(member.fn, k - 2, member.open);
 }
@@ -152,7 +160,8 @@ function findCalls(toks, bound) {
   const calls = [];
   const add = (fn, name, open) => calls.push({ fn, name, open, close: pair(toks, open) });
   toks.forEach((t, k) => {
-    if (t.type === 'id' && !isP(toks[k - 1], '.') && !isW(toks[k - 1], 'function')) addIdentifierCalls(toks, k, bound, add);
+    if (t.type === 'id' && !isP(toks[k - 1], '.') && !isW(toks[k - 1], 'function'))
+      addIdentifierCalls(toks, k, bound, add);
     else addRequiredModuleCall(toks, k, add);
   });
   return calls;

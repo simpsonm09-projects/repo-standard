@@ -63,7 +63,9 @@ function marksGenerated(root, rel) {
     if (!text || text.startsWith('#')) continue;
     const tokens = text.split(/\s+/);
     if (tokens.length < 2) continue;
-    const marked = tokens.slice(1).some((attr) => attr === 'linguist-generated' || attr.startsWith('linguist-generated='));
+    const marked = tokens
+      .slice(1)
+      .some((attr) => attr === 'linguist-generated' || attr.startsWith('linguist-generated='));
     if (!marked) continue;
     const pattern = tokens[0].replace(/^\//, '');
     if (pattern === rel || pattern === base || pattern === `**/${base}`) return true;
@@ -123,7 +125,9 @@ function checkReadme(root, add) {
     return '';
   }
   const readme = normalize(readText(readmePath));
-  const headings = stripFences(readme).split('\n').filter((line) => /^#\s+\S/.test(line));
+  const headings = stripFences(readme)
+    .split('\n')
+    .filter((line) => /^#\s+\S/.test(line));
   if (headings.length !== 1) {
     add('docs/readme', `README.md has ${headings.length} level-1 headings, expected 1`);
   }

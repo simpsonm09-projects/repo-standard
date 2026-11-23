@@ -11,6 +11,18 @@ default:
 install:
     mise install
 
+# Format JavaScript and TypeScript with Bun.
+fmt:
+    bun fmt scripts tools
+
+# Check JavaScript and TypeScript formatting with Bun.
+fmt-check:
+    bun fmt --check scripts tools
+
+# Type check JavaScript and TypeScript with Bun.
+typecheck:
+    bun check
+
 # Run every linter over the tracked files.
 lint:
     mise exec -- flint run --full
@@ -33,6 +45,14 @@ coverage:
 
 # Lint and test.
 verify: lint test
+
+# Install the guarded git hooks.
+hooks:
+    node scripts/hooks.mjs
+
+# Check the .agents/skills tree against .claude/skills.
+agent-files:
+    node scripts/agent-files.mjs
 
 # Prune remote-tracking refs and delete local branches merged into main.
 prune:
