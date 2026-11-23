@@ -12,7 +12,14 @@ on:
         type: string
         default: ''
       cache_key:
-        description: Cache key for cache_path; ignored when cache_path is empty.
+        description: Cache key prefix for cache_path; ignored when cache_path is empty.
+        type: string
+        default: ''
+      # A job that calls a reusable workflow cannot use `runner` or
+      # `hashFiles` in `with`, so the key is built here from a static prefix
+      # and the dependency files the caller names.
+      cache_hash_files:
+        description: Files whose hash keys the cache, one glob per line.
         type: string
         default: ''
 
@@ -57,7 +64,10 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.cache_path }}
-          key: ${{ inputs.cache_key }}
+          key: >-
+            ${{ inputs.cache_key }}-${{ runner.os }}-${{
+            inputs.cache_hash_files == '' && 'no-key' ||
+            hashFiles(inputs.cache_hash_files) }}
       - name: Install pinned tools
         uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
       - name: Run the coverage recipe
