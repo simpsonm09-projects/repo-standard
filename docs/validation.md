@@ -23,23 +23,22 @@ exception file, so it is honest on its own.
 
 `check-repo` runs `check-standard` and then adds the checks a repository can make about
 itself through the GitHub API with its own token. Pass `--no-api` to skip the API checks.
-Pass `--agent-level propose|merge|full` to compare the live ruleset with the level policy.
 
 ## Groups
 
-| Group | Checks |
-| --- | --- |
-| `files` | The required paths exist. |
-| `mise` | `mise.toml` pins `aqua:casey/just`. |
-| `ci` | `ci.yml` calls `lint`, `aislop`, `security` and `standard` at a pinned SHA, and defines a `test` job that runs on a runner. It also defines a `coverage` job that calls the shared coverage workflow at a pinned SHA, unless the repository records `ci/coverage` in its exception file. |
-| `dependabot` | `.github/dependabot.yml` declares version 2, a scheduled ecosystem and no inline credential. |
-| `community` | The byte-identical community files match the pinned standard. |
-| `docs` | The [documentation layout](documentation.md) holds. |
-| `scripting` | Recipe bodies stay portable, scripts are declared, non-vendored skills call `just <recipe>`, and the skill tree and its symlinks agree. |
-| `env` | Git's index contains no actual `.env` file at any depth, and the pre-push hook rejects such filenames in every proposed ref's reachable history. |
-| `subprocess` | Every `node:child_process` call passes a literal `windowsHide: true`. |
-| `settings` | The default branch is `main`, the description is set and the owner topic is present. |
-| `ruleset` | Successful API responses for a public repository are checked for exactly one active `protect-main` targeting `main`; its required checks match the repository's coverage state, with a job for each. |
+| Group        | Checks                                                                                                                                                                                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `files`      | The required paths exist.                                                                                                                                                                                                                                                                |
+| `mise`       | `mise.toml` pins `aqua:casey/just`.                                                                                                                                                                                                                                                      |
+| `ci`         | `ci.yml` calls `lint`, `aislop`, `security` and `standard` at a pinned SHA, and defines a `test` job that runs on a runner. It also defines a `coverage` job that calls the shared coverage workflow at a pinned SHA, unless the repository records `ci/coverage` in its exception file. |
+| `dependabot` | `.github/dependabot.yml` declares version 2, a scheduled ecosystem and no inline credential.                                                                                                                                                                                             |
+| `community`  | The byte-identical community files match the pinned standard.                                                                                                                                                                                                                            |
+| `docs`       | The [documentation layout](documentation.md) holds.                                                                                                                                                                                                                                      |
+| `scripting`  | Recipe bodies stay portable, scripts are declared, non-vendored skills call `just <recipe>`, and the skill tree and its symlinks agree.                                                                                                                                                  |
+| `env`        | Git's index contains no actual `.env` file at any depth, and the pre-push hook rejects such filenames in every proposed ref's reachable history.                                                                                                                                         |
+| `subprocess` | Every `node:child_process` call passes a literal `windowsHide: true`.                                                                                                                                                                                                                    |
+| `settings`   | The default branch is `main`, the description is set and the owner topic is present.                                                                                                                                                                                                     |
+| `ruleset`    | Successful API responses for a public repository are checked for exactly one active `protect-main` targeting `main`; its required checks match the repository's coverage state, with a job for each.                                                                                     |
 
 API read failures are notices and do not establish protection. A `standard: ok` result
 does not prove complete API coverage when a read failed.
@@ -60,8 +59,8 @@ with the rule id, the reason and a revisit date. An exception without a reason o
 is drift.
 
 ```markdown
-| Rule | Reason | Revisit |
-| --- | --- | --- |
+| Rule          | Reason                                                                       | Revisit    |
+| ------------- | ---------------------------------------------------------------------------- | ---------- |
 | `ci/coverage` | Records. The roster and policy are data; `scripts/validate.mjs` is the test. | 2027-03-01 |
 ```
 

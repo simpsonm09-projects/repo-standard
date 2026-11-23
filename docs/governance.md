@@ -23,9 +23,8 @@ that go through a pull request.
 
 ## Apply
 
-The apply scripts read the repository's agent level, build the payload for that level
-and upsert every committed ruleset by name. They do not delete rulesets, and they stop
-on a private repository until it becomes public.
+The apply scripts build the payload and upsert every committed ruleset by name. They do
+not delete rulesets, and they stop on a private repository until it becomes public.
 
 ```bash
 bash scripts/apply-rulesets.sh <owner>/<repo>          # dry run
@@ -35,12 +34,12 @@ bash scripts/apply-rulesets.sh <owner>/<repo> --apply
 Print one payload without writing it:
 
 ```bash
-node scripts/ruleset-payload.mjs rulesets/protect-main.json --level merge --repo <owner>/<repo>
+node scripts/ruleset-payload.mjs rulesets/protect-main.json --repo <owner>/<repo>
 ```
 
 `ruleset-payload.mjs` always empties the bypass list, sets zero approvals and forces
-squash-only, whatever the level. It adds `coverage / coverage` for a covered repository
-and removes it for an uncovered one.
+squash-only. It adds `coverage / coverage` for a covered repository and removes it for
+an uncovered one.
 
 ## Repository settings
 
@@ -51,14 +50,12 @@ converges the rest; see [github-settings.md](github-settings.md).
 
 `check-repo` audits the repository's own live state. A read-only token may not see
 `bypass_actors`; the checker then reports the field as unverified rather than inferring
-an empty list. Pass `--agent-level propose|merge|full` to fail closed on an omitted
-field.
+an empty list.
 
 | Gap id                                                                               | Meaning                                                                               |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
 | `ruleset/protect-main`                                                               | `protect-main` is missing or duplicated.                                              |
 | `ruleset/ambiguous`                                                                  | The ruleset id is not numeric.                                                        |
-| `ruleset/approval-policy`                                                            | The explicit level is unsupported or does not match the policy.                       |
 | `ruleset/rules`, `ruleset/required-checks`                                           | The rules or the required checks are unreadable.                                      |
 | `ruleset/enforcement`, `ruleset/main-target`                                         | The ruleset is inactive or cannot be verified to cover `main`.                        |
 | `ruleset/protect-rule`                                                               | There is not exactly one `pull_request` rule.                                         |
@@ -67,9 +64,6 @@ field.
 | `ruleset/protect-bypass`                                                             | The bypass list is readable and not empty.                                            |
 | `ruleset/required-strict`                                                            | The ruleset does not require the branch to be up to date.                             |
 | `ruleset/required-missing`, `ruleset/required-no-job`, `ruleset/required-unexpected` | The live required set differs from the expected set, or names a check no job reports. |
-
-`check-agent-access` compares every roster repository's live `protect-main` with the
-policy for its declared level.
 
 ## Required checks
 

@@ -2,7 +2,6 @@
   "readme": true,
   "features": [
     "docs/features/fleet-conformance.md",
-    "docs/features/agent-access.md",
     "docs/features/repository-maintenance-planner.md",
     "docs/features/maintenance-ownership-policy.md",
     "docs/features/delivery-preflight-receipt.md"

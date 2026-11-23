@@ -1,9 +1,0 @@
-{
-  "forks": [
-    {
-      "repository": "simpsonm09/fixture-owned",
-      "upstream": "acme/upstream-lib",
-      "agentAccess": "propose"
-    }
-  ]
-}

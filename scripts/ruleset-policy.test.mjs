@@ -5,9 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { applySettings } from './apply-settings.mjs';
-import { compareMainRulesets, findUniqueRuleset } from './lib/ruleset-policy.mjs';
+import { findUniqueRuleset, rulesetTargetErrors } from './lib/ruleset-policy.mjs';
 import { buildPayload } from './ruleset-payload.mjs';
-import { compare } from './check-agent-access.mjs';
 import { EXIT } from './lib/exit.mjs';
 import { expectedChecks } from './lib/required.mjs';
 
@@ -29,74 +28,38 @@ function ruleset(name, count, actors = []) {
 }
 
 function testRulesets() {
-  const admin = [{ actor_id: null, actor_type: 'OrganizationAdmin', bypass_mode: 'pull_request' }];
   const protect = ruleset('protect-main', 0);
-  assert(compareMainRulesets('propose', protect).length === 0, 'propose policy passes');
-  assert(compareMainRulesets('merge', protect).length === 0, 'merge policy passes');
-  assert(compareMainRulesets('full', protect).length === 0, 'full policy passes');
+  assert(rulesetTargetErrors(protect, 'protect-main').length === 0, 'a valid protect-main target passes');
   assert(
-    compareMainRulesets('propose', ruleset('protect-main', 1)).some((item) => item.includes('expected 0')),
-    'a required approval fails',
-  );
-  assert(compareMainRulesets('legacy', protect).length > 0, 'unknown level fails');
-  assert(
-    compareMainRulesets('full', { ...protect, bypass_actors: admin }).some((item) =>
-      item.includes('protect-main has bypass'),
-    ),
-    'any bypass actor fails',
+    rulesetTargetErrors(
+      { ...protect, conditions: { ref_name: { include: ['refs/heads/release'], exclude: [] } } },
+      'protect-main',
+    ).some((item) => item.includes('does not target exactly')),
+    'wrong branch target fails',
   );
   assert(
-    compareMainRulesets('full', { ...protect, bypass_actors: undefined }).some((item) => item.includes('unreadable')),
-    'unreadable bypass list fails',
-  );
-  assert(
-    compareMainRulesets('full', null).some((item) => item.includes('missing or unreadable')),
-    'missing ruleset fails',
-  );
-  assert(
-    compareMainRulesets('full', { ...protect, enforcement: 'disabled' }).some((item) =>
+    rulesetTargetErrors({ ...protect, enforcement: 'disabled' }, 'protect-main').some((item) =>
       item.includes('expected active'),
     ),
     'inactive ruleset fails',
   );
   assert(
-    compareMainRulesets('full', {
-      ...protect,
-      conditions: { ref_name: { include: ['refs/heads/release'], exclude: [] } },
-    }).some((item) => item.includes('does not target exactly')),
-    'wrong branch target fails',
-  );
-  assert(
-    compareMainRulesets('full', { ...protect, rules: [] }).some((item) => item.includes('expected one pull_request')),
-    'missing pull_request rule fails',
-  );
-  assert(
-    compareMainRulesets('full', { ...protect, rules: [...protect.rules, ...protect.rules] }).some((item) =>
-      item.includes('found 2'),
-    ),
-    'duplicate pull_request rules fail',
-  );
-  assert(compare('example', 'merge', protect).ok, 'checker accepts the expected merge ruleset');
-  assert(!compare('example', 'full', { ...protect, bypass_actors: admin }).ok, 'checker rejects a bypass actor');
-  assert(
     !findUniqueRuleset([{ name: 'protect-main' }, { name: 'protect-main' }], 'protect-main').ok,
     'duplicate rulesets fail',
   );
 
-  const built = buildPayload(
-    {
-      ...protect,
-      bypass_actors: admin,
-      rules: [
-        {
-          type: 'pull_request',
-          parameters: { required_approving_review_count: 3, allowed_merge_methods: ['merge', 'rebase'] },
-        },
-        { type: 'required_status_checks', parameters: { required_status_checks: [] } },
-      ],
-    },
-    'full',
-  );
+  const admin = [{ actor_id: null, actor_type: 'OrganizationAdmin', bypass_mode: 'pull_request' }];
+  const built = buildPayload({
+    ...protect,
+    bypass_actors: admin,
+    rules: [
+      {
+        type: 'pull_request',
+        parameters: { required_approving_review_count: 3, allowed_merge_methods: ['merge', 'rebase'] },
+      },
+      { type: 'required_status_checks', parameters: { required_status_checks: [] } },
+    ],
+  });
   assert(built.bypass_actors.length === 0, 'the payload strips every bypass actor');
   assert(built.rules[0].parameters.required_approving_review_count === 0, 'the payload requires zero approvals');
   assert(built.rules[0].parameters.allowed_merge_methods.join(',') === 'squash', 'the payload allows squash only');
@@ -364,165 +327,115 @@ function delimiterForPath() {
   return process.platform === 'win32' ? ';' : ':';
 }
 
-function expectPolicyGap(result, label, reason) {
-  const count = (result.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length;
+function testCheckRepoApi(bin) {
+  const success = runCheckRepoCli([], bin, 'success');
   assert(
-    result.status === 1 && count === 1 && result.stdout.includes(reason),
-    `${label} must fail with exactly one approval-policy gap containing ${reason}; got exit ${result.status}:\n${result.stdout}${result.stderr}\nfixture calls: ${result.fixtureCalls}`,
+    success.status === 0 && !success.stdout.includes('gap ruleset/'),
+    `a clean API audit passes; got exit ${success.status}:\n${success.stdout}${success.stderr}`,
   );
-}
 
-function testRequiredContexts(bin, level) {
-  const withLevel = runCheckRepoCli(level, bin, 'missing-required-checks');
+  const omitted = runCheckRepoCli([], bin, 'omit-protect-bypass');
   assert(
-    withLevel.status === 1 && withLevel.stdout.includes('gap ruleset/required-missing:'),
-    'a valid explicit level still reports missing required contexts',
+    omitted.status === 0 &&
+      omitted.stdout.includes('cannot verify protect-main bypass actors: GitHub omitted bypass_actors') &&
+      omitted.stdout.includes('UNVERIFIED') &&
+      omitted.stdout.includes('standard: ok (ruleset bypass visibility unverified)') &&
+      !omitted.stdout.includes('gap ruleset/protect-bypass'),
+    `omitted protect-main bypass_actors is explicitly unverified; got exit ${omitted.status}:\n${omitted.stdout}${omitted.stderr}`,
   );
-  const withoutLevel = runCheckRepoCli([], bin, 'missing-required-checks');
-  assert(
-    withoutLevel.status === 1 &&
-      (withoutLevel.stdout.match(/gap ruleset\/required-missing:/g) ?? []).length === expectedChecks('covered').length,
-    'without a level, the same corrupt required contexts produce every required-missing gap and fail',
-  );
-}
 
-function testBypassVisibility(bin, level) {
-  const noLevel = runCheckRepoCli([], bin, 'omit-protect-bypass');
-  assert(
-    noLevel.status === 0 &&
-      noLevel.stdout.includes('cannot verify protect-main bypass actors: GitHub omitted bypass_actors') &&
-      noLevel.stdout.includes('UNVERIFIED') &&
-      noLevel.stdout.includes('standard: ok (ruleset bypass visibility unverified)') &&
-      !noLevel.stdout.includes('gap ruleset/protect-bypass') &&
-      !noLevel.stdout.includes('gap ruleset/approval-policy'),
-    `omitted protect-main bypass_actors is explicitly unverified without a level; got exit ${noLevel.status}:\n${noLevel.stdout}${noLevel.stderr}`,
-  );
-  const explicit = runCheckRepoCli(level, bin, 'omit-protect-bypass');
-  assert(
-    explicit.status === 1 &&
-      explicit.stdout.includes('gap ruleset/approval-policy:') &&
-      explicit.stdout.includes('protect-main bypass actors are unreadable'),
-    'omitted protect-main bypass_actors fails closed with an explicit level',
-  );
   for (const scenario of ['invalid-protect-bypass', 'nonempty-protect-bypass']) {
     const result = runCheckRepoCli([], bin, scenario);
     assert(
       result.status === 1 && result.stdout.includes('gap ruleset/protect-bypass:'),
-      `readable ${scenario === 'invalid-protect-bypass' ? 'invalid' : 'nonempty'} protect-main bypass_actors remains a hard gap without a level`,
+      `readable ${scenario === 'invalid-protect-bypass' ? 'invalid' : 'nonempty'} protect-main bypass_actors is a hard gap`,
     );
   }
-}
 
-function testCheckRepoCliFailures() {
-  const fixture = mkdtempSync(join(tmpdir(), 'check-repo-cli-'));
-  try {
-    const bin = join(fixture, 'bin');
-    mkdirSync(bin);
-    makeGhFixture(bin);
-    const level = ['--agent-level', 'merge'];
-    expectPolicyGap(runCheckRepoCli(level, bin, 'missing-gh'), 'gh missing', 'gh is not on PATH');
-    const noLevelMissing = runCheckRepoCli([], bin, 'missing-gh');
+  const missing = runCheckRepoCli([], bin, 'missing-required-checks');
+  assert(
+    missing.status === 1 &&
+      (missing.stdout.match(/gap ruleset\/required-missing:/g) ?? []).length === expectedChecks('covered').length,
+    'corrupt required contexts produce every required-missing gap and fail',
+  );
+
+  const broken = runCheckRepoCli([], bin, 'broken-hard-protection');
+  for (const id of [
+    'ruleset/enforcement',
+    'ruleset/main-target',
+    'ruleset/required-missing',
+    'ruleset/required-strict',
+    'ruleset/protect-rule',
+    'ruleset/protect-signatures',
+    'ruleset/protect-bypass',
+  ]) {
     assert(
-      noLevelMissing.stdout.includes('notice: gh is not on PATH') &&
-        !noLevelMissing.stdout.includes('gap ruleset/approval-policy'),
-      'missing gh without an explicit level is notice only',
+      broken.status === 1 && broken.stdout.includes(`gap ${id}:`),
+      `broken protection retains the ${id} hard check`,
     );
-    expectPolicyGap(runCheckRepoCli([...level, '--no-api'], bin), '--no-api', 'API checks were disabled');
-    for (const [scenario, label, reason] of [
-      ['metadata-error', 'metadata read failure', 'cannot read repository metadata'],
-      ['private', 'private repository', 'unsupported for private repositories'],
-      ['ruleset-list-error', 'ruleset list failure', 'cannot read ruleset list'],
-      ['detail-error', 'ruleset detail failure', 'cannot read protect-main detail'],
-    ]) {
-      const result = runCheckRepoCli(level, bin, scenario);
-      expectPolicyGap(result, label, reason);
-      assert(
-        result.fixtureCalls.includes('repos/simpsonm09-projects/example'),
-        `${label} fixture proves gh was invoked`,
-      );
-    }
-    const missingIdentity = runCheckRepoCli(level, bin, 'success', false);
-    expectPolicyGap(missingIdentity, 'missing identity', 'repository identity could not be determined');
-    const success = runCheckRepoCli(level, bin, 'success');
+  }
+
+  const noApi = runCheckRepoCli(['--no-api'], bin);
+  assert(noApi.status === 0 && !noApi.stdout.includes('gap ruleset/'), '--no-api skips the API checks');
+
+  const missingGh = runCheckRepoCli([], bin, 'missing-gh');
+  assert(
+    missingGh.status === 0 && missingGh.stdout.includes('notice: gh is not on PATH'),
+    'missing gh is a notice, not a gap',
+  );
+
+  const privateRepo = runCheckRepoCli([], bin, 'private');
+  assert(
+    privateRepo.status === 0 && !privateRepo.stdout.includes('gap ruleset/'),
+    `a private repository skips the ruleset audit; got exit ${privateRepo.status}:\n${privateRepo.stdout}${privateRepo.stderr}`,
+  );
+  for (const scenario of ['metadata-error', 'ruleset-list-error', 'detail-error']) {
+    const result = runCheckRepoCli([], bin, scenario);
     assert(
-      success.status === 0 &&
-        !success.stdout.includes('gap ruleset/approval-policy') &&
-        !success.stdout.includes('gap ruleset/required-missing') &&
-        !success.stdout.includes('notice: cannot read'),
-      'a valid explicit-level API audit passes with hard checks present',
+      result.status === 0 && result.stdout.includes('notice: cannot read'),
+      `${scenario} is notice-only and succeeds; got exit ${result.status}:\n${result.stdout}${result.stderr}`,
     );
-    const successWithoutLevel = runCheckRepoCli([], bin, 'success');
     assert(
-      successWithoutLevel.stdout.includes('protect-main approval count and bypass actors were not compared') &&
-        !successWithoutLevel.stdout.includes('gap ruleset/approval-policy'),
-      'a successful API read without a level remains notice only',
+      result.fixtureCalls.includes('repos/simpsonm09-projects/example'),
+      `${scenario} fixture proves gh was invoked`,
     );
-    testBypassVisibility(bin, level);
-    const noLevelNoApi = runCheckRepoCli(['--no-api'], bin);
-    assert(!noLevelNoApi.stdout.includes('gap ruleset/approval-policy'), 'no-level --no-api does not add a policy gap');
-    const invalid = runCheckRepoCli(['--agent-level', 'bogus'], bin, 'success');
+  }
+
+  for (const scenario of [
+    'detail-empty',
+    'detail-null',
+    'detail-array',
+    'detail-scalar',
+    'metadata-empty',
+    'metadata-null',
+    'metadata-array',
+    'metadata-scalar',
+    'ruleset-list-empty',
+    'ruleset-list-null',
+    'ruleset-list-object',
+    'ruleset-list-array',
+  ]) {
+    const result = runCheckRepoCli([], bin, scenario);
     assert(
-      invalid.status === 1 && (invalid.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length === 1,
-      'unsupported level reports one gap',
+      result.status === 0 && result.stdout.includes('notice: cannot read'),
+      `${scenario} remains notice-only and succeeds; got exit ${result.status}:\n${result.stdout}${result.stderr}`,
     );
-    const invalidWithoutApi = runCheckRepoCli(['--agent-level', 'bogus', '--no-api'], bin);
-    assert(
-      invalidWithoutApi.status === 1 &&
-        (invalidWithoutApi.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length === 1,
-      'unsupported level with API disabled does not duplicate its gap',
-    );
-    for (const scenario of [
-      'detail-empty',
-      'detail-null',
-      'detail-array',
-      'detail-scalar',
-      'metadata-empty',
-      'metadata-null',
-      'metadata-array',
-      'metadata-scalar',
-      'ruleset-list-empty',
-      'ruleset-list-null',
-      'ruleset-list-object',
-      'ruleset-list-array',
-    ]) {
-      const levelResult = runCheckRepoCli(level, bin, scenario);
-      expectPolicyGap(levelResult, `${scenario} explicit`, 'cannot read');
-      assert(
-        levelResult.fixtureCalls.includes('repos/simpsonm09-projects/example'),
-        `${scenario} explicit fixture proves gh was invoked`,
-      );
-      const noticeResult = runCheckRepoCli([], bin, scenario);
-      assert(
-        noticeResult.status === 0 && noticeResult.stdout.includes('notice: cannot read'),
-        `${scenario} without a level remains notice-only and succeeds`,
-      );
-    }
-    testRequiredContexts(bin, level);
-    const brokenHardChecks = runCheckRepoCli(level, bin, 'broken-hard-protection');
-    for (const id of [
-      'ruleset/enforcement',
-      'ruleset/main-target',
-      'ruleset/required-missing',
-      'ruleset/required-strict',
-      'ruleset/protect-rule',
-      'ruleset/protect-signatures',
-      'ruleset/protect-bypass',
-    ]) {
-      assert(
-        brokenHardChecks.status === 1 && brokenHardChecks.stdout.includes(`gap ${id}:`),
-        `valid explicit level retains the ${id} hard check`,
-      );
-    }
-  } finally {
-    rmSync(fixture, { recursive: true, force: true });
   }
 }
 
 export function runTest() {
   try {
     testRulesets();
-    testCheckRepoCliFailures();
     testAutoMergeSettings();
+    const fixture = mkdtempSync(join(tmpdir(), 'check-repo-cli-'));
+    try {
+      const bin = join(fixture, 'bin');
+      mkdirSync(bin);
+      makeGhFixture(bin);
+      testCheckRepoApi(bin);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
     process.stdout.write('ruleset-policy: all assertions passed\n');
     return EXIT.OK;
   } catch (error) {

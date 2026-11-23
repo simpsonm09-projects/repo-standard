@@ -12,7 +12,6 @@ The reusable repository standard for `simpsonm09-projects`. It owns the shared C
 - Ruleset JSON and an idempotent apply script for branch and tag protection: squash-only `protect-main` with no bypass actors.
 - A `justfile` task-runner convention, with `just` as the one local entry point.
 - A fleet conformance checker that proves every repository matches the standard and stays aligned.
-- A GitHub App token broker that mints installation tokens scoped to one repository.
 - Repository settings and owner-topic convergence through a dry-run apply script.
 - TypeScript scripts executed by Bun through `just`, with bash kept as a thin launcher.
 - A testing convention for the test job each repository adds to its caller workflow.
@@ -56,4 +55,4 @@ MIT. See [`LICENSE`](LICENSE).
 ## Related repositories
 
 - [`repo-template`](https://github.com/simpsonm09-projects/repo-template) is the generated-repo starting point.
-- [`maxstack`](https://github.com/simpsonm09-projects/maxstack) composes the plugin layers for OpenCode and Claude Code. The org plugin also provides agent-access gates for GitHub Copilot CLI and Pi.
+- [`maxstack`](https://github.com/simpsonm09-projects/maxstack) composes the plugin layers for OpenCode and Claude Code. The org plugin registers its shared skills in OpenCode, Claude Code and GitHub Copilot CLI.

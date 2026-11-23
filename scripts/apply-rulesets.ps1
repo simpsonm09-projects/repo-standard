@@ -32,13 +32,6 @@ if ($visibility -ne 'public') {
     return
 }
 
-# Resolve only a selectable access level. Legacy and unknown values must be
-# migrated explicitly; never upgrade them to full during application.
-$short = $Repo.Split('/')[-1]
-$level = (& node (Join-Path $repoRoot 'scripts/agent-access.mjs') $short 2>$null)
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($level)) { throw "Could not resolve a selectable access level for $Repo" }
-$level = $level.Trim()
-
 $existing = @()
 foreach ($line in (& gh api "repos/$Repo/rulesets" --jq '.[] | [.id, .name] | @tsv')) {
     if (-not $line) { continue }
@@ -47,7 +40,7 @@ foreach ($line in (& gh api "repos/$Repo/rulesets" --jq '.[] | [.id, .name] | @t
 }
 
 foreach ($file in Get-ChildItem -LiteralPath $rulesetDir -Filter '*.json' | Sort-Object Name) {
-    $payloadArgs = @($file.FullName, '--level', $level, '--repo', $Repo)
+    $payloadArgs = @($file.FullName, '--repo', $Repo)
     $payloadFile = [System.IO.Path]::GetTempFileName()
     & node (Join-Path $repoRoot 'scripts/ruleset-payload.mjs') @payloadArgs | Set-Content -LiteralPath $payloadFile
     if ($LASTEXITCODE -ne 0) { throw "Failed to build the payload for $($file.Name)" }

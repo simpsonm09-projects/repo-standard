@@ -55,7 +55,7 @@ shellcheck *args:
 commit-msg *args:
     {{op}} run commit-msg {{args}}
 
-# Read the pushed refs from stdin, refuse main, and apply the agent access policy.
+# Read the pushed refs from stdin, run the env guard, and scan the range with gitleaks.
 hook-pre-push:
     {{op}} run hook-pre-push
 
@@ -83,13 +83,9 @@ security:
 secret-scan:
     {{op}} run secret-scan
 
-# Run every test suite, including the agent-token scope tests.
+# Run every test suite.
 test:
     {{op}} run test
-
-# Run the offline agent-token scope tests.
-test-agent-token:
-    {{op}} run test-agent-token
 
 # Build a read-only delivery preflight receipt from explicit JSON evidence.
 delivery-receipt *args:
@@ -98,14 +94,6 @@ delivery-receipt *args:
 # Run the suite with coverage and write coverage/lcov.info.
 coverage:
     {{op}} run coverage
-
-# Run the agent-access enforcement tests over the fixture catalog and the pre-push hook.
-test-agent-access:
-    {{op}} run test-agent-access
-
-# Run the agent App manifest permission tests.
-test-agent-app:
-    {{op}} run test-agent-app
 
 # Run the hooks-group rule tests over fixtures.
 test-check-standard:
@@ -119,7 +107,7 @@ test-pre-push:
 test-all-checks:
     {{op}} run test-all-checks
 
-# Run local ruleset approval and explicit auto-merge setting tests.
+# Run local ruleset target, payload and explicit auto-merge setting tests.
 test-ruleset-policy:
     {{op}} run test-ruleset-policy
 
@@ -179,22 +167,6 @@ check-repo *args:
 audit-fleet *args:
     {{op}} run audit-fleet {{args}}
 
-# Resolve a repository's agent access level and capabilities.
-agent-access *args:
-    {{op}} run agent-access {{args}}
-
-# Check the declared level against both live main rulesets.
-check-agent-access *args:
-    {{op}} run check-agent-access {{args}}
-
-# Create the fleet agent GitHub App from the manifest and capture its credentials.
-create-agent-app *args:
-    {{op}} run create-agent-app {{args}}
-
-# Mint a short-lived installation token for a fleet repository.
-agent-token *args:
-    {{op}} run agent-token {{args}}
-
 # Fail when the changed lines are not covered enough.
 patch-coverage *args:
     {{op}} run patch-coverage {{args}}
@@ -207,6 +179,6 @@ apply-settings *args:
 apply-rulesets *args:
     {{op}} run apply-rulesets {{args}}
 
-# Print a hard-protection or approval-only ruleset payload for a repository level.
+# Print the hard-protection ruleset payload for a repository.
 ruleset-payload *args:
     {{op}} run ruleset-payload {{args}}
