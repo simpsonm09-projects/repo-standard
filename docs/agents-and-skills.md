@@ -10,22 +10,22 @@ This page covers where a repository puts its files and what the checker reads.
 General best practices and integration live in the plugins. Repository-specific facts
 live in the repository.
 
-| Layer | Owns | Examples |
-| --- | --- | --- |
-| Plugins | General best practices and integration | `service-integrations`, `local-services`, `repo-tasks`, `dev-tools`, `discord`, `integrations-personal`, the PStack workflow skills |
-| Repository | Only repo-specific facts | language and toolchain, database structure, domain rules, architecture invariants, repo commands |
+| Layer      | Owns                                   | Examples                                                                                                                            |
+| ---------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Plugins    | General best practices and integration | `service-integrations`, `local-services`, `repo-tasks`, `dev-tools`, `discord`, `integrations-personal`, the PStack workflow skills |
+| Repository | Only repo-specific facts               | language and toolchain, database structure, domain rules, architecture invariants, repo commands                                    |
 
 The test: would this help another repository? If so, it belongs in a plugin. A repository
 never restates a plugin skill; it names the skill to load.
 
 ## Locations
 
-| Path | Purpose |
-| --- | --- |
-| `AGENTS.md` | The routing instruction: what the repository is, the commands, the invariants and which skills to load. No standalone `CLAUDE.md`. |
-| `.agents/skills/<id>/SKILL.md` | The canonical repo-specific skill. Codex, OpenCode, Pi, Cursor, Copilot CLI, Antigravity and Gemini CLI read this path. |
-| `.claude/skills/<id>` | A relative symlink to `../../.agents/skills/<id>`. Claude Code reads only this path. |
-| `.opencode/agents/<id>.md` | A repo-specific OpenCode subagent profile. |
+| Path                           | Purpose                                                                                                                            |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md`                    | The routing instruction: what the repository is, the commands, the invariants and which skills to load. No standalone `CLAUDE.md`. |
+| `.agents/skills/<id>/SKILL.md` | The canonical repo-specific skill. Codex, OpenCode, Pi, Cursor, Copilot CLI, Antigravity and Gemini CLI read this path.            |
+| `.claude/skills/<id>`          | A relative symlink to `../../.agents/skills/<id>`. Claude Code reads only this path.                                               |
+| `.opencode/agents/<id>.md`     | A repo-specific OpenCode subagent profile.                                                                                         |
 
 A repository adds `AGENTS.md` when it has repo-specific facts. It adds
 `.agents/skills/<id>/` for each repo-specific skill, plus the `.claude/skills/<id>`
@@ -41,8 +41,8 @@ ln -s ../../.agents/skills/verify .claude/skills/verify
 ```
 
 `.claude/skills/` holds no real directory. `just agent-files` fails when the two sets
-differ, a link is broken, or a skill names a recipe that does not exist. Windows clones
-set `core.symlinks=true`; a checkout where links became text files fails the same recipe.
+differ, a link is broken, or a skill names a recipe that does not exist. A checkout where
+links became text files fails the same recipe (C8.4).
 
 `.opencode/skills/` is the old location and is not used. The checker reports
 `scripting/skill-location` for a skill there.
@@ -60,11 +60,11 @@ set `core.symlinks=true`; a checkout where links became text files fails the sam
 
 ## Harnesses
 
-| Harness | Repo-local skills | Repo-local agents |
-| --- | --- | --- |
-| OpenCode | `.agents/skills/` and `.claude/skills/` | `.opencode/agents/` |
-| Claude Code | `.claude/skills/` only, so the symlink is required | not read |
-| Codex, Pi, Cursor, Copilot CLI, Antigravity, Gemini CLI | `.agents/skills/` | not documented here |
+| Harness                                                 | Repo-local skills                                  | Repo-local agents   |
+| ------------------------------------------------------- | -------------------------------------------------- | ------------------- |
+| OpenCode                                                | `.agents/skills/` and `.claude/skills/`            | `.opencode/agents/` |
+| Claude Code                                             | `.claude/skills/` only, so the symlink is required | not read            |
+| Codex, Pi, Cursor, Copilot CLI, Antigravity, Gemini CLI | `.agents/skills/`                                  | not documented here |
 
 The org plugin's access gate supports OpenCode, Claude Code, GitHub Copilot CLI and Pi.
 See [`features/agent-access.md`](features/agent-access.md) and the org plugin README for

@@ -10,28 +10,28 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/repo-maintenance-planner.yml"
-      - "ops.json"
-      - "ops.generated.just"
-      - "scripts/op.mjs"
-      - "scripts/repo-maintenance-test.mjs"
-      - "scripts/lib/check.mjs"
-      - "scripts/lib/exit.mjs"
-      - "scripts/lib/ops.mjs"
-      - "scripts/lib/proc.mjs"
-      - "tools/repo-maintenance/**"
+      - '.github/workflows/repo-maintenance-planner.yml'
+      - 'ops.json'
+      - 'ops.generated.just'
+      - 'scripts/op.mjs'
+      - 'scripts/repo-maintenance-test.mjs'
+      - 'scripts/lib/check.mjs'
+      - 'scripts/lib/exit.mjs'
+      - 'scripts/lib/ops.mjs'
+      - 'scripts/lib/proc.mjs'
+      - 'tools/repo-maintenance/**'
   pull_request:
     paths:
-      - ".github/workflows/repo-maintenance-planner.yml"
-      - "ops.json"
-      - "ops.generated.just"
-      - "scripts/op.mjs"
-      - "scripts/repo-maintenance-test.mjs"
-      - "scripts/lib/check.mjs"
-      - "scripts/lib/exit.mjs"
-      - "scripts/lib/ops.mjs"
-      - "scripts/lib/proc.mjs"
-      - "tools/repo-maintenance/**"
+      - '.github/workflows/repo-maintenance-planner.yml'
+      - 'ops.json'
+      - 'ops.generated.just'
+      - 'scripts/op.mjs'
+      - 'scripts/repo-maintenance-test.mjs'
+      - 'scripts/lib/check.mjs'
+      - 'scripts/lib/exit.mjs'
+      - 'scripts/lib/ops.mjs'
+      - 'scripts/lib/proc.mjs'
+      - 'tools/repo-maintenance/**'
 
 permissions:
   contents: read
@@ -43,11 +43,7 @@ concurrency:
 jobs:
   test-repo-maintenance:
     if: github.repository_owner == 'simpsonm09-projects'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -57,6 +53,6 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          python-version: "3.12"
+          python-version: '3.12'
       - name: Run the pure planner tests
         run: node scripts/op.mjs run test-repo-maintenance

@@ -142,6 +142,7 @@ function checkCi(root, add) {
   }
 
   checkPins(text, add);
+  checkRunners(jobs, add);
 
   if (!hasTestJob(root)) {
     add('ci/test', 'no "test" job that runs on a runner in .github/workflows');
@@ -167,6 +168,25 @@ function checkSharedJob(job, jobs, external, local, isSelf, add) {
     if (localMatch[1] !== job) add(`ci/${job}`, `job "${job}" calls ${localMatch[1]}.yml`);
   } else {
     add(`ci/${job}`, `job "${job}" is not pinned to a 40-char repo-standard SHA (uses: ${uses})`);
+  }
+}
+
+// C5.6: every job runs on Linux. A Windows or macOS job is a hard gap, not an
+// optional portability probe, so a caller cannot keep one by accident.
+const PLATFORM_JOB = /^test-(?:windows|macos)$/;
+const PLATFORM_RUNNER = /\b(?:windows|macos)-/i;
+
+function checkRunners(jobs, add) {
+  for (const [name, block] of jobs) {
+    if (PLATFORM_JOB.test(name)) {
+      add('ci/platform', `ci.yml has a "${name}" job; every job runs on Linux (C5.6)`);
+    }
+    for (const line of block) {
+      const match = /^\s*runs-on:\s*(.+?)\s*$/.exec(line);
+      if (match && PLATFORM_RUNNER.test(match[1])) {
+        add('ci/platform', `job "${name}" runs on ${match[1]}; every job runs on Linux (C5.6)`);
+      }
+    }
   }
 }
 

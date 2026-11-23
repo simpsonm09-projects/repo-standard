@@ -226,12 +226,6 @@
       "description": "Run the required-check rule tests over fixtures and the check-standard and check-repo matrices."
     },
     {
-      "id": "test-portable",
-      "kind": "portable",
-      "run": "node scripts/portable.test.mjs",
-      "description": "Run the focused cross-platform regression on the host OS."
-    },
-    {
       "id": "test-repo-maintenance",
       "kind": "portable",
       "run": "node scripts/repo-maintenance-test.mjs",

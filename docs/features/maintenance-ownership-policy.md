@@ -192,6 +192,6 @@ The recipe routes to `node scripts/op.mjs run test-repo-maintenance`, which find
 an existing Python 3.10 or newer interpreter from a fixed list of interpreter names
 on `PATH`. The same suite is discovered from the `tools/repo-maintenance/tests`
 package as the cleanup planner's tests, and the hosted `repo-maintenance-planner`
-workflow runs it on Linux, Windows, and macOS. The committed fixtures are
+workflow runs it on Linux. The committed fixtures are
 synthetic: the suite seeds no personal account, machine path, or private inventory
 and reads no external input.

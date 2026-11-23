@@ -11,48 +11,44 @@ Repositories carry a `justfile` at the root. Run `just --list` to see the recipe
 
 The core set every repository provides:
 
-| Recipe | Does |
-| --- | --- |
-| `just` | Lists the recipes. |
-| `just install` | Installs the pinned tools with `mise install`. |
-| `just fmt` | Formats JavaScript and TypeScript with `bun fmt`. |
-| `just fmt-check` | Checks JavaScript and TypeScript formatting with `bun fmt --check`. |
-| `just lint` | Runs `bun lint` (oxlint) and flint for non-JavaScript files. |
-| `just typecheck` | Runs `bun check` where the repository has TypeScript. |
-| `just test` | Runs the suite. |
-| `just check` | Runs everything CI requires, in parallel where possible. |
-| `just hooks` | Installs the git hooks. |
-| `just agent-files` | Checks `.agents/skills/` against `.claude/skills/`. |
+| Recipe             | Does                                                                |
+| ------------------ | ------------------------------------------------------------------- |
+| `just`             | Lists the recipes.                                                  |
+| `just install`     | Installs the pinned tools with `mise install`.                      |
+| `just fmt`         | Formats JavaScript and TypeScript with `bun fmt`.                   |
+| `just fmt-check`   | Checks JavaScript and TypeScript formatting with `bun fmt --check`. |
+| `just lint`        | Runs `bun lint` (oxlint) and flint for non-JavaScript files.        |
+| `just typecheck`   | Runs `bun check` where the repository has TypeScript.               |
+| `just test`        | Runs the suite.                                                     |
+| `just check`       | Runs everything CI requires, in parallel where possible.            |
+| `just hooks`       | Installs the git hooks.                                             |
+| `just agent-files` | Checks `.agents/skills/` against `.claude/skills/`.                 |
 
-Repositories add `coverage`, `test-changed`, `test-portable`, `spec`, `complexity`,
-`build`, `prune` and language recipes as they need them. Keep the names conventional so
-a reader can guess them. Arguments are positional, as in `just emit config.json out.json`.
+Repositories add `coverage`, `test-changed`, `spec`, `complexity`, `build`, `prune` and
+language recipes as they need them. Keep the names conventional so a reader can guess
+them. Arguments are positional, as in `just emit config.json out.json`.
 
 ## Author rules
 
-- Prefer a portable recipe. Split into per-platform scripts only when the logic needs the
-  platform.
+- Prefer a portable recipe. Split into a separate script only when the logic needs it.
 - Call a portable executable. Do not put shell operators (`&&`, `&`, `;`, `|`),
   redirection, `$VAR`, backtick substitution, `./` or `.\` in a recipe.
 - Put multi-step logic in a TypeScript script under `scripts/` and call it from the
   recipe. Bash is a thin launcher for a hook or a one-line wrapper. PowerShell is for
-  Windows-target code only.
-- Keep the `set windows-shell` line at the top so a recipe behaves the same on Windows.
+  Windows-target code only, and no repository here has one.
 
 Start from [`../templates/justfile`](../templates/justfile).
 
 ## Platform scripts
 
-A script that runs on one platform declares it in a header comment within the first ten
-lines. The value is `windows`, `posix`, `linux` or `macos`. A `.ps1` file declares
-`windows`; a `.sh` file declares `posix` when it is portable, or the more specific
-`linux` or `macos` when it is not.
+Every machine and CI job is Linux (C5.6). A script that is not portable declares that in
+a header comment within the first ten lines, with the value `linux`.
 
 ```bash
-# platforms: posix
+# platforms: linux
 ```
 
-Call the recipe the same way on every platform; do not name the interpreter or the script
+Call the recipe the same way everywhere; do not name the interpreter or the script
 file in the call.
 
 ## Conformance

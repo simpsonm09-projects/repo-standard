@@ -56,14 +56,6 @@ function recipeBodies(text) {
   return bodies;
 }
 
-function checkWindowsShell(root, add) {
-  const file = join(root, 'justfile');
-  if (!existsSync(file)) return;
-  if (!/^\s*set\s+windows-shell\b/m.test(normalize(readText(file)))) {
-    add('scripting/windows-shell', 'justfile has no "set windows-shell" line');
-  }
-}
-
 function checkShellOps(header, line, add) {
   // A single-quoted segment is data and is dropped. Inside double quotes the
   // shell still expands `$VAR` and backticks and still reads a relative `./`
@@ -297,7 +289,6 @@ export function checkScripting(root, add) {
   const repoRoot = resolve(root);
   const text = justfileText(repoRoot);
   const bodies = recipeBodies(text);
-  checkWindowsShell(repoRoot, add);
   for (const { header, line } of bodies) {
     checkShellOps(header, line, add);
     checkInterpreter(header, line, add);

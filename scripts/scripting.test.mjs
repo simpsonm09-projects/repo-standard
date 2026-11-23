@@ -15,9 +15,8 @@ import { dirname, join } from 'node:path';
 import { checkScripting } from './check-standard.mjs';
 import { isMain } from './lib/proc.mjs';
 
-const SHELL = 'set windows-shell := ["pwsh", "-NoLogo", "-NoProfile", "-Command"]\n';
 const DEFAULT = '\n# List the recipes.\ndefault:\n    @just --list\n';
-const COMPLIANT = { justfile: `${SHELL}${DEFAULT}` };
+const COMPLIANT = { justfile: `${DEFAULT}` };
 const SKILL = (body) => `---\nname: sample\ndescription: A sample skill.\n---\n\n${body}\n`;
 
 function makeAsserter() {
@@ -61,11 +60,6 @@ function expectClean(assert, label, files) {
   assert(ids.length === 0, `${label}: expected no gaps, got [${ids.join(', ')}]`);
 }
 
-function testWindowsShell(assert) {
-  expectEntry(assert, 'missing set windows-shell', { justfile: DEFAULT }, 'scripting/windows-shell');
-  expectClean(assert, 'compliant justfile', COMPLIANT);
-}
-
 function testShellOps(assert) {
   const violations = [
     'echo a && echo b',
@@ -80,54 +74,49 @@ function testShellOps(assert) {
     'echo "`date`"',
   ];
   for (const body of violations) {
-    const files = { justfile: `${SHELL}\n# Bad.\nbad:\n    ${body}\n` };
+    const files = { justfile: `\n# Bad.\nbad:\n    ${body}\n` };
     expectEntry(assert, `shell operator in "${body}"`, files, 'scripting/shell-ops');
   }
   expectClean(assert, 'portable recipe body', COMPLIANT);
   expectClean(assert, 'a quoted flag value is not shell syntax', {
-    justfile: `${SHELL}\n# Run.\nrun:\n    node scripts/run.mjs --filter "a<b"\n`,
+    justfile: `\n# Run.\nrun:\n    node scripts/run.mjs --filter "a<b"\n`,
   });
   expectClean(assert, 'a single-quoted segment is inert', {
-    justfile: `${SHELL}\n# Run.\nrun:\n    node scripts/run.mjs ';'\n`,
+    justfile: `\n# Run.\nrun:\n    node scripts/run.mjs ';'\n`,
   });
 }
 
 function testInterpreter(assert) {
-  expectEntry(
-    assert,
-    'bare bash',
-    { justfile: `${SHELL}\n# Bad.\nbad:\n    bash scripts/x.sh\n` },
-    'scripting/interpreter',
-  );
+  expectEntry(assert, 'bare bash', { justfile: `\n# Bad.\nbad:\n    bash scripts/x.sh\n` }, 'scripting/interpreter');
   expectEntry(
     assert,
     'bare pwsh',
-    { justfile: `${SHELL}\n# Bad.\nbad:\n    pwsh -File scripts/x.ps1\n` },
+    { justfile: `\n# Bad.\nbad:\n    pwsh -File scripts/x.ps1\n` },
     'scripting/interpreter',
   );
   expectEntry(
     assert,
     'bare python',
-    { justfile: `${SHELL}\n# Bad.\nbad:\n    python scripts/x.py\n` },
+    { justfile: `\n# Bad.\nbad:\n    python scripts/x.py\n` },
     'scripting/interpreter',
   );
   expectEntry(
     assert,
     'a versioned python is still python',
-    { justfile: `${SHELL}\n# Bad.\nbad:\n    python3.12 scripts/x.py\n` },
+    { justfile: `\n# Bad.\nbad:\n    python3.12 scripts/x.py\n` },
     'scripting/interpreter',
   );
   const routed = {
-    justfile: `${SHELL}\n# Route.\nrun:\n    {{ if os_family() == "windows" { "pwsh -File scripts/run.ps1" } else { "bash scripts/run.sh" } }}\n`,
+    justfile: `\n# Route.\nrun:\n    {{ if os_family() == "windows" { "pwsh -File scripts/run.ps1" } else { "bash scripts/run.sh" } }}\n`,
     'scripts/run.ps1': 'Write-Output ok\n',
     'scripts/run.sh': 'echo ok\n',
   };
   expectClean(assert, 'interpreter inside a just expression', routed);
   expectClean(assert, 'interpreter behind mise exec', {
-    justfile: `${SHELL}\n# Spec.\nspec:\n    mise exec -- python scripts/x.py\n`,
+    justfile: `\n# Spec.\nspec:\n    mise exec -- python scripts/x.py\n`,
   });
   expectClean(assert, 'an interpreter used as a flag value is not the command', {
-    justfile: `${SHELL}\n# Generate.\ngen:\n    node scripts/gen.mjs --language python\n`,
+    justfile: `\n# Generate.\ngen:\n    node scripts/gen.mjs --language python\n`,
   });
 }
 
@@ -160,7 +149,7 @@ function testScriptDeclared(assert) {
     assert,
     'a script named only in a comment',
     {
-      justfile: `${SHELL}\n# Run scripts/orphan.sh from here.\ndefault:\n    @just --list\n`,
+      justfile: `\n# Run scripts/orphan.sh from here.\ndefault:\n    @just --list\n`,
       'scripts/orphan.sh': '#!/usr/bin/env bash\necho ok\n',
     },
     'scripting/script-declared',
@@ -182,7 +171,7 @@ function testScriptDeclared(assert) {
     'scripts/orphan.ps1': '# platforms: windows\nWrite-Output ok\n',
   });
   expectClean(assert, 'script referenced by a recipe', {
-    justfile: `${SHELL}\n# Route.\nrun:\n    {{ if os_family() == "windows" { "pwsh -File scripts/run.ps1" } else { "bash scripts/run.sh" } }}\n`,
+    justfile: `\n# Route.\nrun:\n    {{ if os_family() == "windows" { "pwsh -File scripts/run.ps1" } else { "bash scripts/run.sh" } }}\n`,
     'scripts/run.ps1': 'Write-Output ok\n',
     'scripts/run.sh': 'echo ok\n',
   });
@@ -196,7 +185,7 @@ function testScriptDeclared(assert) {
   });
   expectClean(assert, 'a quoted relative script path declares it', {
     ...COMPLIANT,
-    justfile: `${SHELL}\n# Path.\npath := "./scripts/orphan.sh"\n${DEFAULT}`,
+    justfile: `\n# Path.\npath := "./scripts/orphan.sh"\n${DEFAULT}`,
     'scripts/orphan.sh': '#!/usr/bin/env bash\necho ok\n',
   });
 }
@@ -328,7 +317,7 @@ function testToolsRecipe(assert) {
   expectClean(assert, 'tools.yaml with a tools-check recipe', {
     ...COMPLIANT,
     'tools.yaml': 'version: 1\n',
-    justfile: `${SHELL}${DEFAULT}\n# Validate the manifest.\ntools-check:\n    node scripts/tools.mjs check\n`,
+    justfile: `${DEFAULT}\n# Validate the manifest.\ntools-check:\n    node scripts/tools.mjs check\n`,
   });
   expectClean(assert, 'no tools.yaml', COMPLIANT);
 }
@@ -336,7 +325,6 @@ function testToolsRecipe(assert) {
 export function runTest() {
   const { assert, total } = makeAsserter();
   try {
-    testWindowsShell(assert);
     testShellOps(assert);
     testInterpreter(assert);
     testScriptDeclared(assert);

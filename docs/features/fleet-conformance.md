@@ -9,17 +9,17 @@ repository audits another, and there is no organization-wide audit or token.
 [`../../scripts/check-standard.mjs`](../../scripts/check-standard.mjs) takes one
 repository path and prints a compact matrix of nine tree-local groups.
 
-| Group | Checks |
-| --- | --- |
-| `files` | The required paths exist, including `.github/ISSUE_TEMPLATE/`. |
-| `mise` | `mise.toml` pins `aqua:casey/just`. |
-| `ci` | `ci.yml` calls `lint`, `aislop`, `security`, `standard`, and `coverage` at a pinned 40-character SHA, and defines a `test` job that runs on a runner. A repository without a coverage job is excepted on `ci/coverage` in `check-repo`, and the exception gives the reason. |
-| `dependabot` | `.github/dependabot.yml` declares version 2, a scheduled ecosystem, and no inline credential. |
-| `community` | The byte-identical community files match the pinned standard. |
-| `docs` | The [documentation layout](../documentation.md) holds. |
-| `scripting` | Recipe bodies stay portable, scripts are declared, non-vendored skills call `just <recipe>`, and `.agents/skills/` matches its `.claude/skills/` symlinks. |
-| `env` | Git's index contains no actual `.env` file at any depth, and the pre-push hook rejects such filenames in every proposed ref's reachable history before upload. If a repository opts into the env convention, a root `.worktreeinclude` lists each local file, `.gitignore` ignores it, and each listed path has a committed sibling `.example` template. |
-| `subprocess` | Every `node:child_process` call in a source file passes a literal `windowsHide: true`, so Windows opens no empty console window. |
+| Group        | Checks                                                                                                                                                                                                                                                                                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `files`      | The required paths exist, including `.github/ISSUE_TEMPLATE/`.                                                                                                                                                                                                                                                                                           |
+| `mise`       | `mise.toml` pins `aqua:casey/just`.                                                                                                                                                                                                                                                                                                                      |
+| `ci`         | `ci.yml` calls `lint`, `aislop`, `security`, `standard`, and `coverage` at a pinned 40-character SHA, and defines a `test` job that runs on a runner. A repository without a coverage job is excepted on `ci/coverage` in `check-repo`, and the exception gives the reason.                                                                              |
+| `dependabot` | `.github/dependabot.yml` declares version 2, a scheduled ecosystem, and no inline credential.                                                                                                                                                                                                                                                            |
+| `community`  | The byte-identical community files match the pinned standard.                                                                                                                                                                                                                                                                                            |
+| `docs`       | The [documentation layout](../documentation.md) holds.                                                                                                                                                                                                                                                                                                   |
+| `scripting`  | Recipe bodies stay portable, scripts are declared, non-vendored skills call `just <recipe>`, and `.agents/skills/` matches its `.claude/skills/` symlinks.                                                                                                                                                                                               |
+| `env`        | Git's index contains no actual `.env` file at any depth, and the pre-push hook rejects such filenames in every proposed ref's reachable history before upload. If a repository opts into the env convention, a root `.worktreeinclude` lists each local file, `.gitignore` ignores it, and each listed path has a committed sibling `.example` template. |
+| `subprocess` | Every `node:child_process` call in a source file passes a literal `windowsHide: true`.                                                                                                                                                                                                                                                                   |
 
 The script exits `1` when any group has a gap. It never reads the exception file, so
 a single repository can be checked on its own.

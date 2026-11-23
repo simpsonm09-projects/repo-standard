@@ -20,15 +20,11 @@ the test runner.
 - Git hooks run through Lefthook: `lefthook.yml` loads the shared `hooks-v3` configs and
   the `just` recipes implement the policy. `just hooks` installs them; there is no
   checked-in `.githooks` directory and no per-repository hook script.
-- A single-platform script declares the platform in a header comment within the first
-  ten lines:
+- A non-portable script declares `linux` in a header comment within the first ten lines:
 
   ```bash
-  # platforms: windows
+  # platforms: linux
   ```
-
-  The value is one word: `windows`, `posix`, `linux` or `macos`. A `.ps1` file must
-  declare `windows`.
 
 ## Author rules
 
@@ -44,7 +40,6 @@ named entry in the printed matrix.
 
 | Entry                       | Rule                                                                                                                                |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `scripting/windows-shell`   | the root `justfile` has a `set windows-shell` line                                                                                  |
 | `scripting/shell-ops`       | a recipe body has no `&&`, `&`, `;`, `                                                                                              | `, redirection, `$VAR`, backtick substitution, `./`or`.\` |
 | `scripting/interpreter`     | a recipe body names no interpreter as its command word outside a `{{ ... }}` expression or a `mise exec`/`mise run` line            |
 | `scripting/script-declared` | every `scripts/**/*.ps1`, `scripts/**/*.sh` and `scripts/**/*.ts` is referenced by an operation or recipe, or declares its platform |

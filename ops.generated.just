@@ -147,10 +147,6 @@ test-env:
 test-required:
     {{op}} run test-required
 
-# Run the focused cross-platform regression on the host OS.
-test-portable:
-    {{op}} run test-portable
-
 # Run the pure repository-maintenance planner tests under a host Python 3.10 or newer.
 test-repo-maintenance:
     {{op}} run test-repo-maintenance
