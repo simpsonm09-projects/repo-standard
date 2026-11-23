@@ -8,6 +8,7 @@
 import { EXIT } from './lib/exit.mjs';
 import { isMain, run } from './lib/proc.mjs';
 import { runTest as runAgentAccess } from './agent-access.test.mjs';
+import { runTest as runAgentApp } from './create-agent-app.test.mjs';
 import { runTest as runAllChecks } from './all-checks.test.mjs';
 import { runTest as runCheckStandard } from './check-standard.test.mjs';
 import { runTest as runEnv } from './env.test.mjs';
@@ -23,6 +24,7 @@ import { runTest as runDeliveryReceipt } from '../tools/delivery-receipt/receipt
 
 const SUITES = [
   runAgentAccess,
+  runAgentApp,
   runAllChecks,
   runCheckStandard,
   runPatchCoverage,

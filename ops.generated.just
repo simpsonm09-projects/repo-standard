@@ -103,6 +103,10 @@ coverage:
 test-agent-access:
     {{op}} run test-agent-access
 
+# Run the agent App manifest permission tests.
+test-agent-app:
+    {{op}} run test-agent-app
+
 # Run the hooks-group rule tests over fixtures.
 test-check-standard:
     {{op}} run test-check-standard

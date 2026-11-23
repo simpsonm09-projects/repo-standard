@@ -160,6 +160,12 @@
       "description": "Run the agent-access enforcement tests over the fixture catalog and the pre-push hook."
     },
     {
+      "id": "test-agent-app",
+      "kind": "portable",
+      "run": "node scripts/create-agent-app.test.mjs",
+      "description": "Run the agent App manifest permission tests."
+    },
+    {
       "id": "test-check-standard",
       "kind": "portable",
       "run": "node scripts/check-standard.test.mjs",
