@@ -314,7 +314,7 @@ function testRenamedOrgExceptions(assert) {
 // shared workflow. Either reason text is free, but it cannot be empty.
 function testExceptionReasons(assert) {
   const coverage = loadExceptions(EXCEPTIONS).filter((entry) => entry.checks.has('ci/coverage'));
-  assert(coverage.length >= 4, `the coverage exceptions name the four repositories without a coverage job, got ${coverage.length}`);
+  assert(coverage.length >= 3, `the coverage exceptions name the repositories without a coverage job, got ${coverage.length}`);
   for (const entry of coverage) {
     assert(entry.repo.startsWith('simpsonm09-projects/'), `${entry.repo} is an org repository`);
     assert(entry.reason.trim().length > 0, `${entry.repo} gives a reason for having no coverage job`);

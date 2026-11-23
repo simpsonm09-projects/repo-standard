@@ -13,12 +13,6 @@
       "date": "2026-10-12"
     },
     {
-      "repo": "simpsonm09-projects/machine-inventory",
-      "checks": ["ci/coverage"],
-      "reason": "Records, with tests for its own validators and renderers only. The machine records live in machines/. scripts/test.mjs tests the validators in scripts/lib/inventory.mjs and the renderer in scripts/render.mjs. The collect scripts are not under test. See docs/governance.md, Required checks.",
-      "date": "2026-10-12"
-    },
-    {
       "repo": "simpsonm09-projects/maxstack",
       "checks": ["ci/coverage"],
       "reason": "Not measurable by the shared coverage workflow, in part. The installer is PowerShell, about 5,900 lines in scripts/*.ps1, and the Node suite runs it as a subprocess on the Windows test-node job. The Node code is also run through subprocesses. The shared line gate does not instrument the installer. Revisit when the installer has a test path the workflow can measure. See docs/governance.md, Required checks.",
