@@ -274,10 +274,9 @@
     },
     {
       "id": "apply-rulesets",
-      "kind": "twin",
+      "kind": "portable",
       "args": true,
-      "windows": "scripts/apply-rulesets.ps1",
-      "posix": "scripts/apply-rulesets.sh",
+      "run": "scripts/apply-rulesets.sh",
       "description": "Apply the ruleset JSON to a repository."
     },
     {
