@@ -8,11 +8,12 @@ permissions:
   security-events: write
 
 jobs:
-  # Required on a pull request. Trivy reads the working tree, so it scans the
-  # code the pull request would merge.
+  # Required on a pull request. The vulnerability scan reads the working tree,
+  # so it covers the code the pull request would merge. The Trivy database is
+  # cached by the action, keyed on the day.
   trivy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -23,15 +24,19 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          scanners: vuln,secret,misconfig
+          # Misconfiguration is a whole-tree scan and does not depend on the
+          # diff, so it moved to the non-required `security-full` job on `main`
+          # and the weekly schedule (C5.4). Secrets are gitleaks' job below.
+          scanners: vuln
           severity: HIGH,CRITICAL
           format: sarif
           output: trivy.sarif
-          exit-code: "1"
-      # Best-effort. Code scanning is unavailable on a free private
-      # repository, so the SARIF scan step is the gate.
+          exit-code: '1'
+      # Best-effort and not a gate, so it stays off the pull request path. Code
+      # scanning is unavailable on a free private repository, so the scan step
+      # above is the real signal.
       - name: Upload SARIF
-        if: always()
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         with:
@@ -42,24 +47,36 @@ jobs:
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      MISE_NOT_FOUND_AUTO_INSTALL: 'false'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # gitleaks walks commits, so this is the one job that needs the
+          # history: the diff scan needs the base commit's ancestors and the
+          # full scan on `main` needs everything. The scan range, not the
+          # checkout, is what keeps a pull request fast.
           fetch-depth: 0
           persist-credentials: false
+      # gitleaks is already pinned in `mise.toml`, so this job installs it and
+      # nothing else instead of pulling the Docker image.
+      - name: Install the gitleaks pin
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        with:
+          install_args: aqua:gitleaks/gitleaks
       - name: Scan the pull request diff for secrets
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
-        run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --log-opts="${BASE}..HEAD" --redact --exit-code 1
+        run: gitleaks git --log-opts="${BASE}..HEAD" --redact --exit-code 1
       - name: Scan the full history for secrets
         if: github.event_name != 'pull_request'
-        run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --redact --exit-code 1
+        run: gitleaks git --redact --exit-code 1
 
-  # Not required. The license audit is advisory and only needs to run on `main`
-  # and the weekly schedule.
-  license:
+  # Not required. The full-tree scans do not depend on the diff, so they run on
+  # `main` and the weekly schedule only (C5.4).
+  security-full:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -68,6 +85,22 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Scan misconfigurations
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: misconfig
+          format: sarif
+          output: trivy-misconfig.sarif
+          exit-code: '0'
+      - name: Upload misconfiguration SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        with:
+          sarif_file: trivy-misconfig.sarif
       # Report only. Copyleft licenses carry a default HIGH severity in Trivy and
       # would gate a repository for a dependency decision, so the scan never fails.
       - name: Scan licenses
@@ -79,7 +112,7 @@ jobs:
           scanners: license
           format: sarif
           output: trivy-license.sarif
-          exit-code: "0"
+          exit-code: '0'
       - name: Upload license SARIF
         if: always()
         continue-on-error: true

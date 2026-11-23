@@ -10,28 +10,34 @@ permissions:
 jobs:
   aislop:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
+    env:
+      # Only the tools named in `install_args` are installed. Nothing else may
+      # pull the rest of the pinned set in on the fly, or the cache key stops
+      # meaning anything.
+      MISE_NOT_FOUND_AUTO_INSTALL: 'false'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
-      # The audit shells out to the package manager, so the pinned tool set has
-      # to be on PATH, not only the Node that runs npx.
-      - name: Install pinned tools
+      # The scan reads the working tree, so one tool is enough and the job
+      # installs only it. `npm:aislop` needs Node as its install dependency, so
+      # that pin comes with it. See C5.2 in the core standard.
+      - name: Install the aislop pin
         uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
-      - name: Scan and write SARIF
-        run: npx --yes aislop@0.16.1 ci --sarif > aislop.sarif
-        continue-on-error: true
+        with:
+          install_args: node npm:aislop
+      # One run: the exit code is the gate, and the SARIF it writes is uploaded
+      # below. Running the audit twice doubled the slowest required job.
+      - name: Enforce the score gate
+        run: aislop ci --sarif > aislop.sarif
       # SARIF lands in the Security tab only when code scanning is available,
-      # which a free private repository does not have. Keep the upload
-      # best-effort so the score gate above is the real failure signal.
+      # which a free private repository does not have. It is also not a gate,
+      # so it stays off the pull request path (C5.4).
       - name: Upload SARIF
-        if: always()
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         with:
           sarif_file: aislop.sarif
-      - name: Enforce the score gate
-        run: npx --yes aislop@0.16.1 ci
