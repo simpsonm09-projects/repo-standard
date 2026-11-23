@@ -22,11 +22,12 @@ jobs:
         with:
           persist-credentials: false
       # The scan reads the working tree, so one tool is enough and the job
-      # installs only it. See C5.2 in the core standard.
+      # installs only it. `npm:aislop` needs Node as its install dependency, so
+      # that pin comes with it. See C5.2 in the core standard.
       - name: Install the aislop pin
         uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
         with:
-          install_args: npm:aislop
+          install_args: node npm:aislop
       # One run: the exit code is the gate, and the SARIF it writes is uploaded
       # below. Running the audit twice doubled the slowest required job.
       - name: Enforce the score gate
