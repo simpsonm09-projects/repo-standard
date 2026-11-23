@@ -208,7 +208,7 @@ function checkHooks(root, add) {
     if (!/git_url:\s*https:\/\/github\.com\/simpsonm09-projects\/\.github\s*$/m.test(text)) {
       add('hooks/remotes', 'lefthook.yml does not load simpsonm09-projects/.github through remotes');
     }
-    if (!/^\s*ref:\s*hooks-v2\s*$/m.test(text)) add('hooks/remotes', 'lefthook.yml does not pin the hooks-v2 tag');
+    if (!/^\s*ref:\s*hooks-v3\s*$/m.test(text)) add('hooks/remotes', 'lefthook.yml does not pin the hooks-v3 tag');
     for (const config of ['hooks/core.yml', 'hooks/owner.yml']) {
       if (!new RegExp(`^\\s*-\\s*${config.replace('.', '\\.')}\\s*$`, 'm').test(text)) {
         add('hooks/remotes', `lefthook.yml does not load ${config}`);

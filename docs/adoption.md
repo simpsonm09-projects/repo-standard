@@ -74,7 +74,7 @@ local file and list it in `.worktreeinclude`. Start from
 Copy [`templates/lefthook.yml`](../templates/lefthook.yml) and the hook scripts under
 [`templates/scripts/`](../templates/scripts/) that the repository needs, then add the C7.10
 recipes from [`templates/justfile`](../templates/justfile). `just hooks` installs the shared
-`hooks-v2` configs; there is no checked-in `.githooks` directory. Add the `hooks` job from
+`hooks-v3` configs; there is no checked-in `.githooks` directory. Add the `hooks` job from
 [`templates/caller-ci.yml`](../templates/caller-ci.yml) to `ci.yml` and ignore
 `lefthook-local.yml`.
 

@@ -73,7 +73,7 @@ act pull_request
 
 `just hooks` installs the shared Lefthook hooks (C7.8). `lefthook.yml` loads
 `hooks/core.yml` and `hooks/owner.yml` from `simpsonm09-projects/.github` at the
-`hooks-v2` tag; the jobs call the C7.10 recipes in `justfile`. A local
+`hooks-v3` tag; the jobs call the C7.10 recipes in `justfile`. A local
 `core.hooksPath=.githooks` is migrated, any other value is refused, and the merged
 `core-*`/`owner-*` jobs are asserted before success. `lefthook-local.yml` is
 git-ignored. See [scripting.md](scripting.md).
