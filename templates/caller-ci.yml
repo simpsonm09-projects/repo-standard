@@ -28,29 +28,29 @@ jobs:
         run: just fmt-check
   lint:
     if: github.repository_owner == 'simpsonm09-projects'
-    uses: simpsonm09-projects/repo-standard/.github/workflows/lint.yml@86bf84b45d36ea61610fd591e1b81497cf868cd5 # repo-standard, pinned commit
+    uses: simpsonm09-projects/repo-standard/.github/workflows/lint.yml@383d27c2f08fe82a20df52e086704133ae711907 # repo-standard, pinned commit
   aislop:
     if: github.repository_owner == 'simpsonm09-projects'
     permissions:
       contents: read
       security-events: write
-    uses: simpsonm09-projects/repo-standard/.github/workflows/aislop.yml@86bf84b45d36ea61610fd591e1b81497cf868cd5 # repo-standard, pinned commit
+    uses: simpsonm09-projects/repo-standard/.github/workflows/aislop.yml@383d27c2f08fe82a20df52e086704133ae711907 # repo-standard, pinned commit
   security:
     if: github.repository_owner == 'simpsonm09-projects'
     permissions:
       contents: read
       security-events: write
-    uses: simpsonm09-projects/repo-standard/.github/workflows/security.yml@86bf84b45d36ea61610fd591e1b81497cf868cd5 # repo-standard, pinned commit
+    uses: simpsonm09-projects/repo-standard/.github/workflows/security.yml@383d27c2f08fe82a20df52e086704133ae711907 # repo-standard, pinned commit
   standard:
     if: github.repository_owner == 'simpsonm09-projects'
     permissions:
       contents: read
-    uses: simpsonm09-projects/repo-standard/.github/workflows/standard.yml@86bf84b45d36ea61610fd591e1b81497cf868cd5 # repo-standard, pinned commit
+    uses: simpsonm09-projects/repo-standard/.github/workflows/standard.yml@383d27c2f08fe82a20df52e086704133ae711907 # repo-standard, pinned commit
   coverage:
     if: github.repository_owner == 'simpsonm09-projects'
     permissions:
       contents: read
-    uses: simpsonm09-projects/repo-standard/.github/workflows/coverage.yml@86bf84b45d36ea61610fd591e1b81497cf868cd5 # repo-standard, pinned commit
+    uses: simpsonm09-projects/repo-standard/.github/workflows/coverage.yml@383d27c2f08fe82a20df52e086704133ae711907 # repo-standard, pinned commit
 
   # Required check. Every repository defines `just test`; replace the step below
   # with the repository test command when the generic task runner call is not enough.
@@ -72,6 +72,10 @@ jobs:
     if: github.repository_owner == 'simpsonm09-projects'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      # This job runs lefthook and nothing else, so it installs one tool
+      # instead of the whole pinned set (C5.2).
+      MISE_NOT_FOUND_AUTO_INSTALL: 'false'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -79,6 +83,8 @@ jobs:
           persist-credentials: false
       - name: Install pinned tools
         uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        with:
+          install_args: aqua:evilmartians/lefthook
       - name: Fetch the shared hook config
         # `install` fetches the public `hooks-v3` tag into
         # `.git/info/lefthook-remotes`; `validate` alone silently skips remotes.
