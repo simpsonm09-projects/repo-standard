@@ -76,6 +76,8 @@ function ciText({ coverage = null, omit = [], testSuffixes = [] } = {}) {
     (name) => `  ${name}:\n    uses: ${sharedUses(name)}`,
   );
   if (coverage !== null) blocks.push(`  coverage:\n    uses: ${coverage}`);
+  if (!omit.includes('hooks'))
+    blocks.push('  hooks:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: lefthook install');
   if (!omit.includes('test')) blocks.push('  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: just test');
   for (const suffix of testSuffixes)
     blocks.push(`  test-${suffix}:\n    runs-on: windows-latest\n    steps:\n      - run: just test`);
@@ -102,8 +104,8 @@ function jobsOf(names) {
   return new Map(names.map((name) => [name, []]));
 }
 
-const COVERED_JOBS = [...SHARED_JOBS, 'coverage', 'test'];
-const UNCOVERED_JOBS = [...SHARED_JOBS, 'test'];
+const COVERED_JOBS = [...SHARED_JOBS, 'coverage', 'hooks', 'test'];
+const UNCOVERED_JOBS = [...SHARED_JOBS, 'hooks', 'test'];
 
 function ids(gaps) {
   return gaps.map((gap) => gap.id);
@@ -203,6 +205,23 @@ function testLiveExtraTestJob(assert) {
   assert(
     ids(withoutJob).join() === 'ruleset/required-no-job',
     `test-node required with no job: got ${ids(withoutJob)}`,
+  );
+
+  const hooks = requiredGaps({
+    kind: 'covered',
+    live: [...expectedChecks('covered'), 'hooks'],
+    jobs: jobsOf(COVERED_JOBS),
+  });
+  assert(hooks.length === 0, `the rollout may require hooks once its job exists: got ${JSON.stringify(hooks)}`);
+
+  const hooksWithoutJob = requiredGaps({
+    kind: 'covered',
+    live: [...expectedChecks('covered'), 'hooks'],
+    jobs: jobsOf(COVERED_JOBS.filter((job) => job !== 'hooks')),
+  });
+  assert(
+    ids(hooksWithoutJob).join() === 'ruleset/required-no-job',
+    `hooks required with no job: got ${ids(hooksWithoutJob)}`,
   );
 }
 

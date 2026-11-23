@@ -52,6 +52,33 @@ jobs:
       contents: read
     uses: ./.github/workflows/coverage.yml # zizmor: ignore[self-repository] actionlint rejects the $/ form
 
+  hooks:
+    if: github.repository_owner == 'simpsonm09-projects'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+      - name: Fetch the shared hook config
+        # `install` fetches the public `hooks-v2` tag into
+        # `.git/info/lefthook-remotes`; `validate` alone silently skips remotes.
+        run: lefthook install
+      - name: Assert the merged config
+        run: |
+          dump=$(lefthook dump)
+          for job in core-fmt core-forbidden-files core-policy owner-signing; do
+            grep -q "name: $job" <<<"$dump" || {
+              echo "::error::the shared hook config did not load job $job"
+              exit 1
+            }
+          done
+      - name: Validate hook config
+        run: lefthook validate
+
   test:
     if: github.repository_owner == 'simpsonm09-projects'
     runs-on: ubuntu-24.04
@@ -106,7 +133,7 @@ jobs:
 
   all-checks:
     if: always()
-    needs: [fmt, lint, aislop, security, standard, coverage, test, test-windows, test-macos]
+    needs: [fmt, lint, aislop, security, standard, coverage, hooks, test, test-windows, test-macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}

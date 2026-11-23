@@ -2,6 +2,7 @@
 # recipe. Keep each recipe a thin call to a portable tool or a script under
 # scripts/. See https://github.com/simpsonm09-projects/repo-standard/blob/main/docs/task-runner.md
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+set positional-arguments
 
 # List the recipes.
 default:
@@ -11,20 +12,17 @@ default:
 install:
     mise install
 
-# Format JavaScript and TypeScript with Bun.
-fmt:
-    bun fmt scripts tools
+# Format the given files, or the whole repository when none are given (C7.10).
+# Adapt scripts/fmt.ts to the repository's formatter.
+fmt *files:
+    mise exec -- node scripts/fmt.ts {{files}}
 
-# Check JavaScript and TypeScript formatting with Bun.
+# Check formatting without writing.
 fmt-check:
-    bun fmt --check scripts tools
+    mise exec -- node scripts/fmt.ts --check
 
-# Type check JavaScript and TypeScript with Bun.
-typecheck:
-    bun check
-
-# Run every linter over the tracked files.
-lint:
+# Lint the given files, or the whole tree when none are given (C7.10).
+lint *files:
     mise exec -- flint run --full
 
 # Fix what the linters can fix.
@@ -46,9 +44,41 @@ coverage:
 # Lint and test.
 verify: lint test
 
-# Install the guarded git hooks.
+# Staged secret scan (C7.10).
+secrets-staged:
+    mise exec -- gitleaks git --staged --redact --no-banner
+
+# Reject env files, private keys, kubeconfigs and files over 5 MB (C7.10).
+forbidden-files *files:
+    mise exec -- node scripts/forbidden-files.ts {{files}}
+
+# actionlint and zizmor over the given workflows, or every workflow (C7.10).
+workflows *files:
+    mise exec -- node scripts/workflows.ts {{files}}
+
+# shellcheck over the given scripts; nothing to do when none are given (C7.10).
+shellcheck *files:
+    mise exec -- node scripts/shellcheck.ts {{files}}
+
+# Advisory Conventional Commit check (C2.4); never fails the commit (C7.10).
+commit-msg file:
+    mise exec -- node scripts/commit-msg.ts {{quote(file)}}
+
+# Read the pushed refs from stdin, refuse main, and scan the range (C7.10).
+hook-pre-push:
+    mise exec -- bun scripts/git-hook.ts pre-push
+
+# Fast pre-push subset, under 30 seconds (C7.10).
+pre-push-check:
+    mise exec -- node scripts/pre-push-check.ts
+
+# Refresh locked dependencies when a manifest changed (C7.10).
+deps-refresh *files:
+    mise exec -- node scripts/deps-refresh.ts {{files}}
+
+# Install the shared Lefthook hooks and assert the merged jobs (C7.8).
 hooks:
-    node scripts/hooks.mjs
+    mise exec -- node scripts/hooks.ts
 
 # Check the .agents/skills tree against .claude/skills.
 agent-files:

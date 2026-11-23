@@ -10,8 +10,9 @@
     {
       "id": "fmt",
       "kind": "portable",
-      "run": "bun fmt scripts tools",
-      "description": "Format JavaScript and TypeScript with Bun."
+      "run": "node scripts/fmt.mjs",
+      "description": "Format the given files, or every tracked source file.",
+      "args": true
     },
     {
       "id": "fmt-check",
@@ -23,7 +24,8 @@
       "id": "lint",
       "kind": "portable",
       "run": "node scripts/lint.mjs",
-      "description": "Run oxlint over JavaScript and flint over the other languages."
+      "description": "Lint the given files, or run oxlint and flint over the tree.",
+      "args": true
     },
     {
       "id": "lint-fix",
@@ -41,7 +43,66 @@
       "id": "hooks",
       "kind": "portable",
       "run": "node scripts/hooks.mjs",
-      "description": "Install the guarded git hooks."
+      "description": "Install the shared Lefthook hooks and assert the merged jobs."
+    },
+    {
+      "id": "signing-check",
+      "kind": "portable",
+      "run": "node scripts/signing-check.mjs",
+      "description": "Fail when this checkout cannot sign commits (owner hook)."
+    },
+    {
+      "id": "secrets-staged",
+      "kind": "portable",
+      "run": "mise exec -- gitleaks git --staged --redact --no-banner",
+      "description": "Scan the staged diff for secrets with gitleaks."
+    },
+    {
+      "id": "forbidden-files",
+      "kind": "portable",
+      "run": "node scripts/forbidden-files.mjs",
+      "args": true,
+      "description": "Reject env files, private keys, kubeconfigs and files over 5 MB."
+    },
+    {
+      "id": "workflows",
+      "kind": "portable",
+      "run": "node scripts/workflows.mjs",
+      "args": true,
+      "description": "Run actionlint and zizmor over the given workflows, or every workflow."
+    },
+    {
+      "id": "shellcheck",
+      "kind": "portable",
+      "run": "node scripts/shellcheck.mjs",
+      "args": true,
+      "description": "Run shellcheck over the given shell scripts."
+    },
+    {
+      "id": "commit-msg",
+      "kind": "portable",
+      "run": "node scripts/commit-msg.mjs",
+      "args": true,
+      "description": "Warn when a commit subject is not a Conventional Commit."
+    },
+    {
+      "id": "hook-pre-push",
+      "kind": "portable",
+      "run": "node scripts/pre-push.mjs",
+      "description": "Read the pushed refs from stdin, refuse main, and apply the agent access policy."
+    },
+    {
+      "id": "pre-push-check",
+      "kind": "portable",
+      "run": "node scripts/pre-push-check.mjs",
+      "description": "Run the fast pre-push subset: type check and operation manifest."
+    },
+    {
+      "id": "deps-refresh",
+      "kind": "portable",
+      "run": "node scripts/deps-refresh.mjs",
+      "args": true,
+      "description": "Refresh locked dependencies when a manifest changed."
     },
     {
       "id": "agent-files",
@@ -97,6 +158,18 @@
       "kind": "portable",
       "run": "node scripts/agent-access.test.mjs",
       "description": "Run the agent-access enforcement tests over the fixture catalog and the pre-push hook."
+    },
+    {
+      "id": "test-check-standard",
+      "kind": "portable",
+      "run": "node scripts/check-standard.test.mjs",
+      "description": "Run the hooks-group rule tests over fixtures."
+    },
+    {
+      "id": "test-pre-push",
+      "kind": "portable",
+      "run": "node scripts/pre-push.test.mjs",
+      "description": "Run the pre-push policy tests with stub shared scripts and a stub gitleaks."
     },
     {
       "id": "test-all-checks",

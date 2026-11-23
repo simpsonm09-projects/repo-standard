@@ -19,12 +19,12 @@ An enforcement point never asks for a level. It asks whether the repository gran
 capability, so the mapping from the policy to a decision lives in one table in
 [`../../scripts/agent-access.mjs`](../../scripts/agent-access.mjs).
 
-| Level | Grants |
-| --- | --- |
-| Internal `read` baseline | `read` |
-| `propose` | `read`, `pushBranch`, `openPr` |
-| `merge` | `read`, `pushBranch`, `openPr`, `mergePr` |
-| `full` | `read`, `pushBranch`, `openPr`, `mergePr`, `pushMain`, `admin` |
+| Level                    | Grants                                                         |
+| ------------------------ | -------------------------------------------------------------- |
+| Internal `read` baseline | `read`                                                         |
+| `propose`                | `read`, `pushBranch`, `openPr`                                 |
+| `merge`                  | `read`, `pushBranch`, `openPr`, `mergePr`                      |
+| `full`                   | `read`, `pushBranch`, `openPr`, `mergePr`, `pushMain`, `admin` |
 
 ## The resolver
 
@@ -100,30 +100,30 @@ node scripts/agent-access.mjs repo-standard --command "git push --dry-run origin
 the capability or `null`. The `remoteUrl` is optional. The table is ordered, first
 match wins.
 
-| Command | Needs |
-| --- | --- |
-| `gh pr merge ...` | `mergePr` |
-| `gh pr merge ... --admin` (including a bare `--admin` in any operand position) | `forbidden` |
-| `gh pr create\|edit\|close\|reopen\|ready\|comment\|review\|update-branch ...` | `openPr` |
-| `gh issue create ...` | `openPr` |
-| `gh pr review` with only recognized comment or request-changes flags | `openPr` |
-| `gh pr review` with approval, dismissal, unknown flags, or unsupported quoting | `forbidden` |
-| PR create/edit or issue create with `-m`, `--milestone`, or `--remove-milestone` | `admin` |
-| `git push <remote> main` or `refs/heads/main` | `pushMain` |
-| `git push <remote> refs/tags/<tag>`, or a `--tags`, `--all`, `--mirror`, `--follow-tags`, `--delete`, or `--prune` flag | `pushMain` |
-| `git push <remote> <other-ref>` | `pushBranch` |
-| `gh release create\|edit\|delete\|upload` | `admin` |
-| `gh workflow run\|enable\|disable` | `admin` |
-| `gh secret set\|delete` | `admin` |
-| `gh repo create\|delete\|edit\|rename\|transfer\|archive\|unarchive\|sync` | `admin` |
-| An unmodeled `gh` command | `admin` |
-| Known read forms such as `gh pr view`/`list`, `gh status`, and known `gh search` groups | none |
-| `gh auth` commands, including `gh auth token` and `gh auth status --show-token` | `admin` |
-| Bare `gh -h`, `gh --help`, and `gh --version` final controls | none |
-| Other `gh` forms, including an unknown group followed by a read-looking verb | `admin` |
-| `gh api` with an explicit method other than `GET`/`HEAD`, including unknown methods and attached `-XDELETE`, or with `-f`/`--field`/`--raw-field`/`--input` | `admin` |
-| A REST review-route write or recognized GraphQL review mutation recognized within the supported command grammar | `forbidden` |
-| Any other well-formed, unmodeled non-`gh` command | none, allowed |
+| Command                                                                                                                                                     | Needs         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `gh pr merge ...`                                                                                                                                           | `mergePr`     |
+| `gh pr merge ... --admin` (including a bare `--admin` in any operand position)                                                                              | `forbidden`   |
+| `gh pr create\|edit\|close\|reopen\|ready\|comment\|review\|update-branch ...`                                                                              | `openPr`      |
+| `gh issue create ...`                                                                                                                                       | `openPr`      |
+| `gh pr review` with only recognized comment or request-changes flags                                                                                        | `openPr`      |
+| `gh pr review` with approval, dismissal, unknown flags, or unsupported quoting                                                                              | `forbidden`   |
+| PR create/edit or issue create with `-m`, `--milestone`, or `--remove-milestone`                                                                            | `admin`       |
+| `git push <remote> main` or `refs/heads/main`                                                                                                               | `pushMain`    |
+| `git push <remote> refs/tags/<tag>`, or a `--tags`, `--all`, `--mirror`, `--follow-tags`, `--delete`, or `--prune` flag                                     | `pushMain`    |
+| `git push <remote> <other-ref>`                                                                                                                             | `pushBranch`  |
+| `gh release create\|edit\|delete\|upload`                                                                                                                   | `admin`       |
+| `gh workflow run\|enable\|disable`                                                                                                                          | `admin`       |
+| `gh secret set\|delete`                                                                                                                                     | `admin`       |
+| `gh repo create\|delete\|edit\|rename\|transfer\|archive\|unarchive\|sync`                                                                                  | `admin`       |
+| An unmodeled `gh` command                                                                                                                                   | `admin`       |
+| Known read forms such as `gh pr view`/`list`, `gh status`, and known `gh search` groups                                                                     | none          |
+| `gh auth` commands, including `gh auth token` and `gh auth status --show-token`                                                                             | `admin`       |
+| Bare `gh -h`, `gh --help`, and `gh --version` final controls                                                                                                | none          |
+| Other `gh` forms, including an unknown group followed by a read-looking verb                                                                                | `admin`       |
+| `gh api` with an explicit method other than `GET`/`HEAD`, including unknown methods and attached `-XDELETE`, or with `-f`/`--field`/`--raw-field`/`--input` | `admin`       |
+| A REST review-route write or recognized GraphQL review mutation recognized within the supported command grammar                                             | `forbidden`   |
+| Any other well-formed, unmodeled non-`gh` command                                                                                                           | none, allowed |
 
 The `gh` read contract is intentionally narrow: only listed known read group/verb
 pairs remain unclassified; every other `gh` form needs `admin`. Help and version
@@ -281,25 +281,25 @@ way? The policy is pure. It takes a destination and a structured intent, and it
 returns one verdict.
 
 ```js
-resolveDestination({ roster, ownedForks, ignore, localRepo, host, destination })
-  // -> { kind, owner, repo, level, source, upstream? }
-  // kind is 'ignored' | 'org' | 'owned-fork' | 'upstream' | 'unknown'
-decideTarget(target, intent)
-  // -> { allowed, capability, reason }
+resolveDestination({ roster, ownedForks, ignore, localRepo, host, destination });
+// -> { kind, owner, repo, level, source, upstream? }
+// kind is 'ignored' | 'org' | 'owned-fork' | 'upstream' | 'unknown'
+decideTarget(target, intent);
+// -> { allowed, capability, reason }
 ```
 
 `resolveDestination` takes a fully qualified `owner/repo` destination and the
 host, and resolves one kind. `host` must be `github.com`. Any other host, and a
 malformed destination, is `unknown`. First match wins:
 
-| Destination | Kind | Level |
-| --- | --- | --- |
-| exact identity in `ignore.json` | `ignored` | no capabilities; denied before read checks |
-| owner is the roster `org` and the repository is in the roster | `org` | the roster level |
-| the personal owner's fork of the clone's own governed repository | `org` | the same roster level |
-| a target recorded in `owned-forks.json` | `owned-fork` | `propose` |
-| a recorded `upstream` in `owned-forks.json` | `upstream` | internal `read` baseline |
-| anything else | `unknown` | internal `read` baseline |
+| Destination                                                      | Kind         | Level                                      |
+| ---------------------------------------------------------------- | ------------ | ------------------------------------------ |
+| exact identity in `ignore.json`                                  | `ignored`    | no capabilities; denied before read checks |
+| owner is the roster `org` and the repository is in the roster    | `org`        | the roster level                           |
+| the personal owner's fork of the clone's own governed repository | `org`        | the same roster level                      |
+| a target recorded in `owned-forks.json`                          | `owned-fork` | `propose`                                  |
+| a recorded `upstream` in `owned-forks.json`                      | `upstream`   | internal `read` baseline                   |
+| anything else                                                    | `unknown`    | internal `read` baseline                   |
 
 An identity in `agentAccessIgnore` resolves to `ignored` before other destination
 matches. It denies reads and writes, including intents with a null capability.
@@ -316,15 +316,15 @@ repository that happens to share a governed repository's name resolves to
 the intent from the command and the observed git state, and nothing in the
 command text can widen a grant.
 
-| Field | Meaning |
-| --- | --- |
-| `operation` | `push`, `openPr`, `mergePr`, `admin`, `read`, `none`, or `unknown` |
-| `capability` | the capability the caller resolved, or `null` for a read or a local command |
-| `readOnly` | `true` only for a known read or a local command |
-| `resolved` | `false` when the destination or the ref kind could not be resolved |
-| `refs` | the pushed refs, each `{ kind, name, isDefault }` |
-| `force`, `delete` | the push flags that change what a refspec means |
-| `base`, `head` | pull request sides; absent sides or branch-only sides with no identity fields use the observed same-repository shorthand, while any supplied `owner` or `repo` must be a non-empty, complete, case-insensitive match to the destination |
+| Field             | Meaning                                                                                                                                                                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `operation`       | `push`, `openPr`, `mergePr`, `admin`, `read`, `none`, or `unknown`                                                                                                                                                                      |
+| `capability`      | the capability the caller resolved, or `null` for a read or a local command                                                                                                                                                             |
+| `readOnly`        | `true` only for a known read or a local command                                                                                                                                                                                         |
+| `resolved`        | `false` when the destination or the ref kind could not be resolved                                                                                                                                                                      |
+| `refs`            | the pushed refs, each `{ kind, name, isDefault }`                                                                                                                                                                                       |
+| `force`, `delete` | the push flags that change what a refspec means                                                                                                                                                                                         |
+| `base`, `head`    | pull request sides; absent sides or branch-only sides with no identity fields use the observed same-repository shorthand, while any supplied `owner` or `repo` must be a non-empty, complete, case-insensitive match to the destination |
 
 `capability` is `null` for a known read or a local command, and that path
 requires `readOnly: true`. An intent that contradicts itself about writing is
@@ -336,12 +336,12 @@ direct pure call that names only a capability keeps its behavior.
 
 `CAPABILITIES_BY_KIND` is the one table per kind:
 
-| Kind | Grants |
-| --- | --- |
-| `org` | the level's capabilities, from `CAPABILITIES` |
-| `owned-fork` | `read`, `pushBranch`, `openPr` |
-| `upstream` | `read` |
-| `unknown` | `read` |
+| Kind         | Grants                                        |
+| ------------ | --------------------------------------------- |
+| `org`        | the level's capabilities, from `CAPABILITIES` |
+| `owned-fork` | `read`, `pushBranch`, `openPr`                |
+| `upstream`   | `read`                                        |
+| `unknown`    | `read`                                        |
 
 An owned fork gets a strict subset of `propose`. A branch push is granted only
 for a single ref that is a `branch` and is not the resolved default branch, so a
@@ -425,12 +425,13 @@ tree cannot raise a level. A missing catalog or clone denies remote writes.
 
 ## The push guard
 
-[`../../templates/hooks/pre-push`](../../templates/hooks/pre-push) installs at
-`.git/hooks/pre-push`. It reads the refs on stdin, resolves the repository from the
-remote URL, and refuses a push the level does not allow. A push to `main` or a tag
-needs `pushMain`, and a push to any other branch needs `pushBranch`. It governs a
-URL under `github.com/simpsonm09-projects/` and passes every other remote, so the
-resolver's push scope above matches the hook exactly.
+[`../../scripts/pre-push.mjs`](../../scripts/pre-push.mjs) is the `just hook-pre-push`
+recipe, called by the shared Lefthook `core-policy` job. It reads the refs on stdin,
+resolves the repository from the remote URL, and refuses a push the level does not
+allow. A push to `main` or a tag needs `pushMain`, and a push to any other branch
+needs `pushBranch`. It governs a URL under `github.com/simpsonm09-projects/` and
+passes every other remote, so the resolver's push scope above matches the hook
+exactly.
 
 ```mermaid
 flowchart LR

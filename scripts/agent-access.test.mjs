@@ -40,7 +40,7 @@ const RESOLVER = join(HERE, 'agent-access.mjs');
 const FIXTURE_CATALOG = join(HERE, 'fixtures', 'agent-access', 'repos.json');
 const FIXTURE_OWNED_FORKS = join(HERE, 'fixtures', 'agent-access', 'owned-forks.json');
 const FIXTURE_OWNED_REPOSITORIES = join(HERE, 'fixtures', 'agent-access', 'owned-repositories.json');
-const HOOK_TEMPLATE = join(ROOT, 'templates', 'hooks', 'pre-push');
+const PRE_PUSH = join(HERE, 'pre-push.mjs');
 const EXIT = Object.freeze({ OK: 0, FAIL: 1, USAGE: 2 });
 
 // The owned-fork fixture, as the resolver reads it. The pure policy tests use it
@@ -1633,7 +1633,7 @@ function testHook(assert) {
     const init = spawnSync('git', ['init', '-q', clone], { windowsHide: true, encoding: 'utf8' });
     assert(init.status === 0, `hook fixture: git init succeeds (${(init.stderr ?? '').trim()})`);
     const hook = join(clone, '.git', 'hooks', 'pre-push');
-    writeFileSync(hook, readFileSync(HOOK_TEMPLATE));
+    writeFileSync(hook, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(PRE_PUSH)} "$@"\n`);
     chmodSync(hook, 0o755);
     writeFakeResolver(base);
     const shell = resolveShell();

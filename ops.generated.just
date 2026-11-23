@@ -7,17 +7,17 @@ op := "node scripts/op.mjs"
 install:
     {{op}} run install
 
-# Format JavaScript and TypeScript with Bun.
-fmt:
-    {{op}} run fmt
+# Format the given files, or every tracked source file.
+fmt *args:
+    {{op}} run fmt {{args}}
 
 # Check JavaScript and TypeScript formatting with Bun.
 fmt-check:
     {{op}} run fmt-check
 
-# Run oxlint over JavaScript and flint over the other languages.
-lint:
-    {{op}} run lint
+# Lint the given files, or run oxlint and flint over the tree.
+lint *args:
+    {{op}} run lint {{args}}
 
 # Fix what oxlint and flint can fix.
 lint-fix:
@@ -27,9 +27,45 @@ lint-fix:
 typecheck:
     {{op}} run typecheck
 
-# Install the guarded git hooks.
+# Install the shared Lefthook hooks and assert the merged jobs.
 hooks:
     {{op}} run hooks
+
+# Fail when this checkout cannot sign commits (owner hook).
+signing-check:
+    {{op}} run signing-check
+
+# Scan the staged diff for secrets with gitleaks.
+secrets-staged:
+    {{op}} run secrets-staged
+
+# Reject env files, private keys, kubeconfigs and files over 5 MB.
+forbidden-files *args:
+    {{op}} run forbidden-files {{args}}
+
+# Run actionlint and zizmor over the given workflows, or every workflow.
+workflows *args:
+    {{op}} run workflows {{args}}
+
+# Run shellcheck over the given shell scripts.
+shellcheck *args:
+    {{op}} run shellcheck {{args}}
+
+# Warn when a commit subject is not a Conventional Commit.
+commit-msg *args:
+    {{op}} run commit-msg {{args}}
+
+# Read the pushed refs from stdin, refuse main, and apply the agent access policy.
+hook-pre-push:
+    {{op}} run hook-pre-push
+
+# Run the fast pre-push subset: type check and operation manifest.
+pre-push-check:
+    {{op}} run pre-push-check
+
+# Refresh locked dependencies when a manifest changed.
+deps-refresh *args:
+    {{op}} run deps-refresh {{args}}
 
 # Check the .agents/skills tree and its .claude/skills links.
 agent-files:
@@ -66,6 +102,14 @@ coverage:
 # Run the agent-access enforcement tests over the fixture catalog and the pre-push hook.
 test-agent-access:
     {{op}} run test-agent-access
+
+# Run the hooks-group rule tests over fixtures.
+test-check-standard:
+    {{op}} run test-check-standard
+
+# Run the pre-push policy tests with stub shared scripts and a stub gitleaks.
+test-pre-push:
+    {{op}} run test-pre-push
 
 # Run the all-checks aggregate workflow policy tests over local fixtures.
 test-all-checks:
