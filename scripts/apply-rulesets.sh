@@ -31,15 +31,10 @@ if [[ "$visibility" != "public" ]]; then
   exit 0
 fi
 
-# Resolve only a selectable access level. Legacy and unknown values must be
-# migrated explicitly; never upgrade them to full during application.
-short="${repo##*/}"
-level="$(node "$here/scripts/agent-access.mjs" "$short")"
-
 for file in "$here"/rulesets/*.json; do
   ruleset_name="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["name"])' "$file")"
   payload="$(mktemp)"
-  node "$here/scripts/ruleset-payload.mjs" "$file" --level "$level" --repo "$repo" >"$payload"
+  node "$here/scripts/ruleset-payload.mjs" "$file" --repo "$repo" >"$payload"
   ids="$(gh api "repos/$repo/rulesets" --jq ".[] | select(.name==\"$ruleset_name\") | .id")"
   count="$(printf '%s\n' "$ids" | awk 'NF { count += 1 } END { print count + 0 }')"
   if [[ "$count" -gt 1 ]]; then rm -f "$payload"; echo "multiple $ruleset_name rulesets found" >&2; exit 1; fi

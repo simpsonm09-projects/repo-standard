@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 // The C7.10 `hook-pre-push` policy: read the pushed ref lines from stdin, run
-// the env-filename guard, refuse anything the agent access level does not allow,
-// and keep the personal fork out of scope. The exact pushed range is scanned by
-// gitleaks from the `pre-push` hook job that follows this one.
+// the env-filename guard, and scan the exact pushed range with gitleaks.
 //
 // Git calls the hook with the remote name and URL, then one line per ref:
 // <local-ref> <local-sha> <remote-ref> <remote-sha>.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, dirname, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { EXIT } from './lib/exit.mjs';
 import { isMain } from './lib/proc.mjs';
 
@@ -46,18 +44,6 @@ function nodeScript(script, args, input) {
     stdio: [input === undefined ? 'ignore' : 'pipe', 'inherit', 'inherit'],
     windowsHide: true,
   });
-}
-
-// Only the organization remote is governed. The personal fork is a private
-// mirror and out of scope, so fork alignment keeps working.
-export function isOrganizationRemote(url) {
-  return /github\.com[/:]simpsonm09-projects\//u.test(url);
-}
-
-export function capabilityFor(remoteRef) {
-  if (remoteRef === 'refs/heads/main') return 'pushMain';
-  if (remoteRef.startsWith('refs/tags/')) return 'pushMain';
-  return 'pushBranch';
 }
 
 export function pushRefs(input) {
@@ -119,8 +105,7 @@ function scanPushedRanges(root, refs) {
   return EXIT.OK;
 }
 
-export function prePush(argv, input) {
-  const url = argv[1] ?? '';
+export function prePush(_argv, input) {
   const root = repositoryRoot();
   if (root === null) {
     process.stderr.write('pre-push: not inside a Git worktree; refusing the push\n');
@@ -135,34 +120,6 @@ export function prePush(argv, input) {
   const guarded = nodeScript(guard, [], input);
   if (guarded.status !== EXIT.OK) return EXIT.FAIL;
 
-  if (!isOrganizationRemote(url)) return EXIT.OK;
-
-  const resolver = resolveShared(root, 'scripts/agent-access.mjs');
-  if (resolver === null) {
-    process.stderr.write(`agent-access: no resolver for ${root}, refusing the push to ${basename(url, '.git')}\n`);
-    return EXIT.FAIL;
-  }
-
-  const repo = basename(url, '.git');
-  let status = EXIT.OK;
-  for (const line of input.split('\n')) {
-    const fields = line.trim().split(/\s+/u);
-    const remoteRef = fields[2] ?? '';
-    if (remoteRef.length === 0) continue;
-    const allowed = nodeScript(resolver, [repo, '--allows', capabilityFor(remoteRef)]);
-    if (allowed.status !== EXIT.OK) {
-      process.stderr.write(
-        `agent-access: ${repo} denies ${capabilityFor(remoteRef)}, so the push of ${remoteRef} is refused\n`,
-      );
-      status = EXIT.FAIL;
-    }
-  }
-  if (status !== EXIT.OK) {
-    process.stderr.write(
-      'agent-access: raise the level for this repository in repo-catalog/repos.json to allow this push\n',
-    );
-    return status;
-  }
   return scanPushedRanges(root, pushRefs(input));
 }
 

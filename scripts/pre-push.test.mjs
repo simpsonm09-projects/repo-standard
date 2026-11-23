@@ -13,7 +13,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isMain } from './lib/proc.mjs';
-import { capabilityFor, isOrganizationRemote, prePush, pushRefs } from './pre-push.mjs';
+import { prePush, pushRefs } from './pre-push.mjs';
 
 const ORG_URL = 'git@github.com:simpsonm09-projects/repo-template.git';
 const FORK_URL = 'git@github.com:deathpie/repo-template.git';
@@ -26,7 +26,7 @@ function git(root, ...args) {
 
 // A repository with a base commit, a head commit, and stub shared scripts. The
 // stub `mise` on PATH decides what the gitleaks step reports.
-function repository({ allow = true, gitleaks = 0, guard = 0, resolver = true, miseToml = true } = {}) {
+function repository({ gitleaks = 0, guard = 0, miseToml = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'pre-push-'));
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'test@example.com');
@@ -41,9 +41,6 @@ function repository({ allow = true, gitleaks = 0, guard = 0, resolver = true, mi
 
   mkdirSync(join(root, 'scripts', 'lib'), { recursive: true });
   writeFileSync(join(root, 'scripts', 'lib', 'env-pre-push.mjs'), `process.exit(${guard});\n`);
-  if (resolver) {
-    writeFileSync(join(root, 'scripts', 'agent-access.mjs'), `process.exit(${allow ? 0 : 1});\n`);
-  }
   if (miseToml) writeFileSync(join(root, 'mise.toml'), '"aqua:gitleaks/gitleaks" = "8.30.1"\n');
 
   const bin = join(root, 'bin');
@@ -76,22 +73,13 @@ function run(caseFixture, url, input, env = {}) {
 }
 
 function testHelpers(assert) {
-  assert(isOrganizationRemote(ORG_URL), 'the organization SSH remote is governed');
-  assert(
-    isOrganizationRemote('https://github.com/simpsonm09-projects/x.git'),
-    'the organization HTTPS remote is governed',
-  );
-  assert(!isOrganizationRemote(FORK_URL), 'the personal fork is out of scope');
-  assert(capabilityFor('refs/heads/main') === 'pushMain', 'main needs pushMain');
-  assert(capabilityFor('refs/tags/v1') === 'pushMain', 'a tag needs pushMain');
-  assert(capabilityFor('refs/heads/topic') === 'pushBranch', 'a branch needs pushBranch');
   const refs = pushRefs(`\n${refLine('a'.repeat(40), 'b'.repeat(40))}malformed\n`);
   assert(refs.length === 1 && refs[0].remoteRef === 'refs/heads/topic', 'pushRefs keeps the four-field lines');
 }
 
-function testNonOrganization(assert) {
+function testForkPush(assert) {
   const repo = repository();
-  assert(run(repo, FORK_URL, refLine(repo.base, repo.head)) === 0, 'a fork push passes without the resolver');
+  assert(run(repo, FORK_URL, refLine(repo.base, repo.head)) === 0, 'a personal-fork push is guarded and scanned');
 }
 
 function testGuard(assert) {
@@ -99,15 +87,9 @@ function testGuard(assert) {
   assert(run(repo, FORK_URL, refLine(repo.base, repo.head)) === 1, 'a failing filename guard refuses the push');
 }
 
-function testResolver(assert) {
-  const denied = repository({ allow: false });
-  assert(run(denied, ORG_URL, refLine(denied.base, denied.head)) === 1, 'a denied capability refuses the push');
-
-  const missing = repository({ resolver: false });
-  assert(run(missing, ORG_URL, refLine(missing.base, missing.head)) === 1, 'a missing resolver refuses the push');
-
+function testCleanRange(assert) {
   const allowed = repository();
-  assert(run(allowed, ORG_URL, refLine(allowed.base, allowed.head)) === 0, 'an allowed push with a clean range passes');
+  assert(run(allowed, ORG_URL, refLine(allowed.base, allowed.head)) === 0, 'a clean range passes');
 }
 
 function testGitleaks(assert) {
@@ -131,9 +113,9 @@ export function runTest() {
   };
   try {
     testHelpers(assert);
-    testNonOrganization(assert);
+    testForkPush(assert);
     testGuard(assert);
-    testResolver(assert);
+    testCleanRange(assert);
     testGitleaks(assert);
     testNewBranch(assert);
     process.stdout.write('pre-push.test: ok\n');

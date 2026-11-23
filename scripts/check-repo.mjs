@@ -9,7 +9,7 @@ import { loadExceptions, loadRepoExceptions, findException } from './lib/excepti
 import { jobsCalling, parseJobs } from './lib/ci.mjs';
 import { normalize, readText } from './lib/tree.mjs';
 import { kindOf, rulesetGaps, uncoveredCallGaps } from './lib/required.mjs';
-import { compareMainRulesets, findUniqueRuleset, SELECTABLE_LEVELS } from './lib/ruleset-policy.mjs';
+import { findUniqueRuleset } from './lib/ruleset-policy.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STANDARD_ROOT = resolve(HERE, '..');
@@ -33,7 +33,6 @@ const USAGE = `usage: node scripts/check-repo.mjs [repo-path] [options]
 
 options:
   --repo OWNER/NAME     repository identity for the exception file and the API checks
-  --agent-level LEVEL   compare the live protect-main ruleset with the level policy (propose, merge, or full)
   --no-api              run only the tree-local checks
   -h, --help            show this help
 
@@ -45,16 +44,13 @@ repository can read about itself.
 `;
 
 function parseArgs(argv) {
-  const options = { root: null, repo: null, agentLevel: undefined, api: true, help: false };
+  const options = { root: null, repo: null, api: true, help: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '-h' || arg === '--help') options.help = true;
     else if (arg === '--no-api') options.api = false;
     else if (arg === '--repo') {
       options.repo = argv[index + 1];
-      index += 1;
-    } else if (arg === '--agent-level') {
-      options.agentLevel = argv[index + 1] ?? '';
       index += 1;
     } else if (options.root === null) options.root = arg;
   }
@@ -80,10 +76,6 @@ function ghJson(args) {
   }
 }
 
-function addPolicyGap(add, message) {
-  add('ruleset/approval-policy', message);
-}
-
 function isJsonObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -93,8 +85,6 @@ function checkApi(repo, add, notice, ci) {
   if (!meta.ok || !isJsonObject(meta.value)) {
     const error = meta.ok ? 'unreadable repository metadata response body' : meta.error;
     notice(`cannot read ${repo} settings: ${error}`);
-    if (ci.agentLevel !== undefined)
-      addPolicyGap(add, `level not verified: cannot read repository metadata (${error})`);
     return;
   }
   const value = meta.value;
@@ -107,78 +97,53 @@ function checkApi(repo, add, notice, ci) {
   else if (!(topics.value?.names ?? []).includes(owner))
     add('settings/topics', `topics do not include the owner "${owner}"`);
 
-  if (value.visibility !== 'public') {
-    if (ci.agentLevel !== undefined)
-      addPolicyGap(
-        add,
-        `level not verified: ruleset audit is unsupported for ${value.visibility ?? 'unknown'} repositories`,
-      );
-    return;
-  }
-  checkPublicRuleset(repo, add, notice, ci, ci.agentLevel);
+  if (value.visibility !== 'public') return;
+  checkPublicRuleset(repo, add, notice, ci);
 }
 
-function readRulesetSummaries(repo, add, notice, agentLevel) {
+function readRulesetSummaries(repo, add, notice) {
   const result = ghJson(['api', '--paginate', '--slurp', `repos/${repo}/rulesets`]);
   if (!result.ok) {
     notice(`cannot read ${repo} rulesets: ${result.error}`);
-    if (agentLevel !== undefined) addPolicyGap(add, `level not verified: cannot read ruleset list (${result.error})`);
     return null;
   }
   if (!Array.isArray(result.value) || !result.value.every(Array.isArray) || !result.value.flat().every(isJsonObject)) {
-    const error = 'unreadable ruleset list response body';
-    notice(`cannot read ${repo} rulesets: ${error}`);
-    if (agentLevel !== undefined) addPolicyGap(add, `level not verified: cannot read ruleset list (${error})`);
+    notice(`cannot read ${repo} rulesets: unreadable ruleset list response body`);
     return null;
   }
   const summaries = result.value.flat();
   const selected = {};
-  const context = { selected, add, notice, agentLevel };
-  readOneRuleset(repo, summaries, 'protect-main', context);
+  readOneRuleset(repo, summaries, 'protect-main', { selected, add, notice });
   return selected;
 }
 
-function readOneRuleset(repo, summaries, name, { selected, add, notice, agentLevel }) {
+function readOneRuleset(repo, summaries, name, { selected, add, notice }) {
   const match = findUniqueRuleset(summaries, name);
   if (!match.ok) {
     add('ruleset/protect-main', match.reason);
-    if (agentLevel !== undefined) addPolicyGap(add, `level not verified: ${match.reason}`);
     return;
   }
   if (!Number.isSafeInteger(match.summary.id) || match.summary.id < 1) {
     add('ruleset/ambiguous', `could not select a numeric ${name} id`);
-    if (agentLevel !== undefined) addPolicyGap(add, `level not verified: could not select a numeric ${name} id`);
     return;
   }
   const detail = ghJson(['api', `repos/${repo}/rulesets/${match.summary.id}`]);
   if (!detail.ok || !isJsonObject(detail.value)) {
     const error = detail.ok ? 'unreadable response body' : detail.error;
     notice(`cannot read ${name}: ${error}`);
-    if (agentLevel !== undefined) addPolicyGap(add, `level not verified: cannot read ${name} detail (${error})`);
     return;
   }
   selected[name] = detail.value;
 }
 
-function checkPublicRuleset(repo, add, notice, ci, agentLevel) {
-  const selected = readRulesetSummaries(repo, add, notice, agentLevel);
+function checkPublicRuleset(repo, add, notice, ci) {
+  const selected = readRulesetSummaries(repo, add, notice);
   if (!selected) return;
   const protect = selected['protect-main'];
   checkLegacyProtect(protect, ci, add);
-  if (agentLevel !== undefined) {
-    if (SELECTABLE_LEVELS.includes(agentLevel) && protect) checkLevelPolicy(agentLevel, protect, add);
-    return;
-  }
   if (protect && !Object.hasOwn(protect, 'bypass_actors')) {
     notice('cannot verify protect-main bypass actors: GitHub omitted bypass_actors for this read-only API request');
   }
-  notice(
-    'protect-main approval count and bypass actors were not compared; pass --agent-level to enable level-specific policy checks',
-  );
-}
-
-function checkLevelPolicy(agentLevel, protect, add) {
-  for (const error of compareMainRulesets(agentLevel, protect, MAIN_BRANCH)) addPolicyGap(add, error);
 }
 
 function checkLegacyProtect(protect, ci, add) {
@@ -239,20 +204,10 @@ function main() {
   const gaps = [...result.gaps];
   const notices = [];
   const notice = (message) => notices.push(message);
-  const addGap = (id, message) => gaps.push({ id, message });
-  if (options.agentLevel !== undefined && !SELECTABLE_LEVELS.includes(options.agentLevel)) {
-    addPolicyGap(addGap, `unsupported agent level ${options.agentLevel}`);
-  }
-
   const callsCoverage = jobsCalling(jobs, 'coverage', root === STANDARD_ROOT).length > 0;
   gaps.push(...uncoveredCallGaps(kind, callsCoverage));
 
-  const auditLevel = SELECTABLE_LEVELS.includes(options.agentLevel) ? options.agentLevel : undefined;
-  if (auditLevel !== undefined && !options.api)
-    addPolicyGap(addGap, 'level not verified: API checks were disabled with --no-api');
-  else if (options.api && repo) runApiChecks(repo, gaps, notice, { kind, jobs, agentLevel: auditLevel });
-  else if (auditLevel !== undefined)
-    addPolicyGap(addGap, 'level not verified: repository identity could not be determined');
+  if (options.api && repo) runApiChecks(repo, gaps, notice, { kind, jobs });
 
   const { open, excepted } = partitionGaps(gaps, repo, exceptions);
   report(root, repo, open, excepted, notices);
@@ -262,10 +217,7 @@ function main() {
 function runApiChecks(repo, gaps, notice, ci) {
   const add = (id, message) => gaps.push({ id, message });
   if (capture('gh', ['--version']).status === 0) checkApi(repo, add, notice, ci);
-  else {
-    notice('gh is not on PATH, so the API checks are skipped');
-    if (ci.agentLevel !== undefined) addPolicyGap(add, 'level not verified: gh is not on PATH');
-  }
+  else notice('gh is not on PATH, so the API checks are skipped');
 }
 
 function loadExceptionsOrExit(root) {

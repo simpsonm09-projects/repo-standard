@@ -7,8 +7,6 @@
 
 import { EXIT } from './lib/exit.mjs';
 import { isMain, run } from './lib/proc.mjs';
-import { runTest as runAgentAccess } from './agent-access.test.mjs';
-import { runTest as runAgentApp } from './create-agent-app.test.mjs';
 import { runTest as runAllChecks } from './all-checks.test.mjs';
 import { runTest as runCheckStandard } from './check-standard.test.mjs';
 import { runTest as runEnv } from './env.test.mjs';
@@ -23,8 +21,6 @@ import { runTest as runSubprocess } from './subprocess.test.mjs';
 import { runTest as runDeliveryReceipt } from '../tools/delivery-receipt/receipt.test.mjs';
 
 const SUITES = [
-  runAgentAccess,
-  runAgentApp,
   runAllChecks,
   runCheckStandard,
   runPatchCoverage,
@@ -44,10 +40,7 @@ export function runTests() {
   for (const suite of SUITES) {
     if (suite() !== EXIT.OK) failed = true;
   }
-  if (run(process.execPath, ['scripts/op.mjs', 'run', 'test-agent-token']) !== EXIT.OK) failed = true;
-  for (const script of ['scripts/check-agent-access.mjs', 'scripts/ruleset-payload.mjs']) {
-    if (run(process.execPath, [script, '--self-test']) !== EXIT.OK) failed = true;
-  }
+  if (run(process.execPath, ['scripts/ruleset-payload.mjs', '--self-test']) !== EXIT.OK) failed = true;
   return failed ? EXIT.FAIL : EXIT.OK;
 }
 

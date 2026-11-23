@@ -31,7 +31,6 @@ Start here, then read the guide that matches the task.
 
 - [Agents and skills](agents-and-skills.md) covers `AGENTS.md`, the `.agents/skills/` tree and the `.claude/skills/` symlinks.
 - [Fleet conformance](features/fleet-conformance.md) describes the two checkers end to end.
-- [Agent access](features/agent-access.md) resolves a repository's agent level, guards pushes and gates agent shell commands.
 - [Repository-maintenance planner](features/repository-maintenance-planner.md) is a pure, planning-only decision unit for cleanup eligibility.
 - [Ownership policy planner](features/maintenance-ownership-policy.md) is a pure, candidate-only decision unit for local, fork-sync and cleanup ownership.
 - [Delivery preflight receipt](features/delivery-preflight-receipt.md) records explicit, read-only delivery evidence without executing commands or deciding authorization.

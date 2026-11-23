@@ -89,7 +89,7 @@
       "id": "hook-pre-push",
       "kind": "portable",
       "run": "node scripts/pre-push.mjs",
-      "description": "Read the pushed refs from stdin, refuse main, and apply the agent access policy."
+      "description": "Read the pushed refs from stdin, run the env guard, and scan the range with gitleaks."
     },
     {
       "id": "pre-push-check",
@@ -132,13 +132,7 @@
       "id": "test",
       "kind": "portable",
       "run": "node scripts/test.mjs",
-      "description": "Run every test suite, including the agent-token scope tests."
-    },
-    {
-      "id": "test-agent-token",
-      "kind": "portable",
-      "run": "node --test scripts/agent-token.test.mjs",
-      "description": "Run the offline agent-token scope tests."
+      "description": "Run every test suite."
     },
     {
       "id": "delivery-receipt",
@@ -152,18 +146,6 @@
       "kind": "portable",
       "run": "npx --yes c8 --reporter=lcov --reports-dir=coverage node scripts/test.mjs",
       "description": "Run the suite with coverage and write coverage/lcov.info."
-    },
-    {
-      "id": "test-agent-access",
-      "kind": "portable",
-      "run": "node scripts/agent-access.test.mjs",
-      "description": "Run the agent-access enforcement tests over the fixture catalog and the pre-push hook."
-    },
-    {
-      "id": "test-agent-app",
-      "kind": "portable",
-      "run": "node scripts/create-agent-app.test.mjs",
-      "description": "Run the agent App manifest permission tests."
     },
     {
       "id": "test-check-standard",
@@ -187,7 +169,7 @@
       "id": "test-ruleset-policy",
       "kind": "portable",
       "run": "node scripts/ruleset-policy.test.mjs",
-      "description": "Run local ruleset approval and explicit auto-merge setting tests."
+      "description": "Run local ruleset target, payload and explicit auto-merge setting tests."
     },
     {
       "id": "test-patch-coverage",
@@ -277,34 +259,6 @@
       "description": "Audit the scripting conformance of every repository in a directory and print one matrix."
     },
     {
-      "id": "agent-access",
-      "kind": "portable",
-      "args": true,
-      "run": "node scripts/agent-access.mjs",
-      "description": "Resolve a repository's agent access level and capabilities."
-    },
-    {
-      "id": "check-agent-access",
-      "kind": "portable",
-      "args": true,
-      "run": "node scripts/check-agent-access.mjs",
-      "description": "Check the declared level against both live main rulesets."
-    },
-    {
-      "id": "create-agent-app",
-      "kind": "portable",
-      "args": true,
-      "run": "node scripts/create-agent-app.mjs",
-      "description": "Create the fleet agent GitHub App from the manifest and capture its credentials."
-    },
-    {
-      "id": "agent-token",
-      "kind": "portable",
-      "args": true,
-      "run": "node scripts/agent-token.mjs",
-      "description": "Mint a short-lived installation token for a fleet repository."
-    },
-    {
       "id": "patch-coverage",
       "kind": "portable",
       "args": true,
@@ -331,7 +285,7 @@
       "kind": "portable",
       "args": true,
       "run": "node scripts/ruleset-payload.mjs",
-      "description": "Print a hard-protection or approval-only ruleset payload for a repository level."
+      "description": "Print the hard-protection ruleset payload for a repository."
     }
   ]
 }

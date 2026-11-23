@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Retire the agent-access system and the `simpsonm09-fleet-agent` GitHub App. Remove the access resolver, the token broker, the App manifest and its creation script, the level checker, the pre-push capability check and the level-aware ruleset payload. Agents use the owner's accounts; protection comes from the rulesets (no bypass actors, required checks), the hooks and the standards. `ruleset-payload.mjs` still strips bypass actors and forces zero approvals and squash-only, and the pre-push hook still runs the env-filename guard and the range secret scan.
+
 - Load the shared hook config from the annotated `hooks-v3` tag, whose jobs run as `mise exec -- just <recipe>` so the pinned tools are on PATH without shell activation. `check-standard` now pins and accepts `hooks-v3`, and the templates follow it.
 
 - Make the PR-required/zero-approval policy the standard. `approval-main` now carries zero required approvals at every access level; `propose` and `merge` keep the organization-admin `pull_request` bypass on that ruleset, and `full` keeps none. `protect-main` still requires a pull request, signed commits, strict required checks, and has no bypass actors.

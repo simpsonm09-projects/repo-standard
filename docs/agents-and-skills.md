@@ -66,9 +66,8 @@ links became text files fails the same recipe (C8.4).
 | Claude Code                                             | `.claude/skills/` only, so the symlink is required | not read            |
 | Codex, Pi, Cursor, Copilot CLI, Antigravity, Gemini CLI | `.agents/skills/`                                  | not documented here |
 
-The org plugin's access gate supports OpenCode, Claude Code, GitHub Copilot CLI and Pi.
-See [`features/agent-access.md`](features/agent-access.md) and the org plugin README for
-installation.
+The org plugin registers its shared skills in OpenCode, Claude Code and GitHub Copilot CLI.
+See the org plugin README for installation.
 
 ## Repo facts
 
