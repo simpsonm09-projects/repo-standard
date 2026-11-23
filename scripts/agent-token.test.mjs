@@ -21,9 +21,16 @@ const setup = (scope) => [
 
 test('POST requests JSON scope for the target and preserves the return shape', async () => {
   const requests = [];
-  const result = await mintForRepo('SimpsonM09', 'repo-one', dependencies(setup({
-    repositories: [{ full_name: 'simpsonm09/REPO-ONE' }],
-  }), requests));
+  const result = await mintForRepo(
+    'SimpsonM09',
+    'repo-one',
+    dependencies(
+      setup({
+        repositories: [{ full_name: 'simpsonm09/REPO-ONE' }],
+      }),
+      requests,
+    ),
+  );
   assert.deepEqual(result, {
     installation: 4321,
     token: 'offline-test-token',
@@ -42,10 +49,23 @@ test('accepts a response that omits repositories for GitHub compatibility', asyn
 test('rejects invalid names before credentials or network access', async () => {
   let calls = 0;
   const deps = {
-    credentialsProvider: () => { calls += 1; throw new Error('credentials accessed'); },
-    fetchImpl: async () => { calls += 1; throw new Error('network accessed'); },
+    credentialsProvider: () => {
+      calls += 1;
+      throw new Error('credentials accessed');
+    },
+    fetchImpl: async () => {
+      calls += 1;
+      throw new Error('network accessed');
+    },
   };
-  for (const [owner, repo] of [[ '', 'repo' ], ['owner', ''], ['../owner', 'repo'], ['owner', '../repo'], ['owner/name', 'repo'], ['owner', 'repo\\name']]) {
+  for (const [owner, repo] of [
+    ['', 'repo'],
+    ['owner', ''],
+    ['../owner', 'repo'],
+    ['owner', '../repo'],
+    ['owner/name', 'repo'],
+    ['owner', 'repo\\name'],
+  ]) {
     await assert.rejects(mintForRepo(owner, repo, deps), /owner and repository|invalid owner or repository/);
   }
   assert.equal(calls, 0);
@@ -67,27 +87,34 @@ test('rejects scope mismatch, wrong owner, and multiple repositories', async () 
 
 test('rejects invalid installation IDs and malformed token responses', async () => {
   for (const id of [0, -1, 1.5, '123']) {
-    await assert.rejects(mintForRepo('owner', 'repo', dependencies([
-      response({ id }),
-    ])), /invalid installation id/);
+    await assert.rejects(mintForRepo('owner', 'repo', dependencies([response({ id })])), /invalid installation id/);
   }
-  for (const token of [null, { token: '', expires_at: '2099-01-01T00:00:00Z' },
-    { token: 'present', expires_at: 'not-a-date' }]) {
-    await assert.rejects(mintForRepo('owner', 'repo', dependencies([
-      response({ id: 1 }), response(token),
-    ])), /invalid token response/);
+  for (const token of [
+    null,
+    { token: '', expires_at: '2099-01-01T00:00:00Z' },
+    { token: 'present', expires_at: 'not-a-date' },
+  ]) {
+    await assert.rejects(
+      mintForRepo('owner', 'repo', dependencies([response({ id: 1 }), response(token)])),
+      /invalid token response/,
+    );
   }
 });
 
 test('HTTP failures never include an echoed response body', async () => {
   const canary = 'SECRET-CANARY-response-body';
   const requests = [];
-  const deps = dependencies([
-    response(null, false, 403),
-  ], requests);
+  const deps = dependencies([response(null, false, 403)], requests);
   deps.fetchImpl = async (url, options) => {
     requests.push({ url, options });
-    return { ok: false, status: 403, json: async () => { throw new Error(canary); }, text: async () => canary };
+    return {
+      ok: false,
+      status: 403,
+      json: async () => {
+        throw new Error(canary);
+      },
+      text: async () => canary,
+    };
   };
   await assert.rejects(mintForRepo('owner', 'repo', deps), (error) => {
     assert.match(error.message, /HTTP 403/);

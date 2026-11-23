@@ -13,6 +13,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fmt:
+    if: github.repository_owner == 'simpsonm09-projects'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+      - name: Check formatting
+        run: just fmt-check
   lint:
     if: github.repository_owner == 'simpsonm09-projects'
     uses: ./.github/workflows/lint.yml # zizmor: ignore[self-repository] actionlint rejects the $/ form
@@ -93,7 +106,7 @@ jobs:
 
   all-checks:
     if: always()
-    needs: [lint, aislop, security, standard, coverage, test, test-windows, test-macos]
+    needs: [fmt, lint, aislop, security, standard, coverage, test, test-windows, test-macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}

@@ -3,7 +3,11 @@ import { sha256 } from './receipt-validation.mjs';
 export function describeWorkingTree(bytes) {
   const text = bytes.includes(0) ? null : decodeUtf8(bytes);
   const normalized = text === null ? null : Buffer.from(text.replace(/\r\n/g, '\n'));
-  return { sha256: sha256(bytes), lfNormalizedSha256: normalized ? sha256(normalized) : null, lineEndings: lineEndings(bytes) };
+  return {
+    sha256: sha256(bytes),
+    lfNormalizedSha256: normalized ? sha256(normalized) : null,
+    lineEndings: lineEndings(bytes),
+  };
 }
 
 function lineEndings(bytes) {
@@ -33,5 +37,3 @@ function decodeUtf8(bytes) {
     return null;
   }
 }
-
-

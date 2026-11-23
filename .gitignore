@@ -4,6 +4,7 @@ aislop.sarif
 trivy.sarif
 
 # Local tool state
+node_modules/
 .aislop/history.jsonl
 .aislop/agent/
 .DS_Store

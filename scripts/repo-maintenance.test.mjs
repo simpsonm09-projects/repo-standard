@@ -58,7 +58,10 @@ function assertLiteralCandidates(check, platform) {
   for (const [cmd, base] of list) {
     check(ALLOWED_COMMANDS.has(cmd), `${platform}: ${cmd} is an allowlisted interpreter name`);
     check(!SHELL_CHARACTER.test(cmd), `${platform}: ${cmd} carries no shell or path character`);
-    check(base.every((arg) => LITERAL_ARGUMENT.test(arg)), `${platform}: every ${cmd} argument is a literal`);
+    check(
+      base.every((arg) => LITERAL_ARGUMENT.test(arg)),
+      `${platform}: every ${cmd} argument is a literal`,
+    );
   }
 }
 

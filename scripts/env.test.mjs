@@ -75,36 +75,71 @@ function testNoTrigger(assert) {
 
 function testWorktreeinclude(assert) {
   expectEntry(assert, 'ignored .env without a .worktreeinclude', { '.gitignore': '.env\n' }, 'env/worktreeinclude');
-  expectEntry(assert, 'an env convention without an ignore rule', {
-    '.gitignore': 'node_modules/\n', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n',
-  }, 'env/worktreeinclude-path');
+  expectEntry(
+    assert,
+    'an env convention without an ignore rule',
+    {
+      '.gitignore': 'node_modules/\n',
+      '.worktreeinclude': '.env\n',
+      '.env.example': 'KEY=value\n',
+    },
+    'env/worktreeinclude-path',
+  );
 }
 
 function testWorktreeincludePath(assert) {
-  expectEntry(assert, 'a listed path .gitignore does not ignore', {
-    '.gitignore': '.env\n',
-    '.worktreeinclude': '.env\nother.txt\n',
-  }, 'env/worktreeinclude-path');
-  expectEntry(assert, 'a .worktreeinclude with no paths', {
-    '.gitignore': '.env\n',
-    '.worktreeinclude': '# the local env file\n',
-  }, 'env/worktreeinclude-path');
+  expectEntry(
+    assert,
+    'a listed path .gitignore does not ignore',
+    {
+      '.gitignore': '.env\n',
+      '.worktreeinclude': '.env\nother.txt\n',
+    },
+    'env/worktreeinclude-path',
+  );
+  expectEntry(
+    assert,
+    'a .worktreeinclude with no paths',
+    {
+      '.gitignore': '.env\n',
+      '.worktreeinclude': '# the local env file\n',
+    },
+    'env/worktreeinclude-path',
+  );
 }
 
 function testExample(assert) {
-  expectEntry(assert, 'listed .env without a sibling .env.example', {
-    '.gitignore': '.env\n',
-    '.worktreeinclude': '.env\n',
-  }, 'env/example');
-  expectEntry(assert, 'a sibling .env.example that .gitignore ignores', {
-    '.gitignore': '.env*\n',
-    '.worktreeinclude': '.env\n',
-    '.env.example': 'KEY=value\n',
-  }, 'env/example');
-  const untrackedIds = idsFor({
-    '.gitignore': '.env\n', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n',
-  }, { untracked: ['.env.example'] });
-  assert(untrackedIds.includes('env/example'), `an untracked example must report env/example, got [${untrackedIds.join(', ')}]`);
+  expectEntry(
+    assert,
+    'listed .env without a sibling .env.example',
+    {
+      '.gitignore': '.env\n',
+      '.worktreeinclude': '.env\n',
+    },
+    'env/example',
+  );
+  expectEntry(
+    assert,
+    'a sibling .env.example that .gitignore ignores',
+    {
+      '.gitignore': '.env*\n',
+      '.worktreeinclude': '.env\n',
+      '.env.example': 'KEY=value\n',
+    },
+    'env/example',
+  );
+  const untrackedIds = idsFor(
+    {
+      '.gitignore': '.env\n',
+      '.worktreeinclude': '.env\n',
+      '.env.example': 'KEY=value\n',
+    },
+    { untracked: ['.env.example'] },
+  );
+  assert(
+    untrackedIds.includes('env/example'),
+    `an untracked example must report env/example, got [${untrackedIds.join(', ')}]`,
+  );
 }
 
 function testCompliant(assert) {
@@ -125,21 +160,48 @@ function testNested(assert) {
 
 function testTracked(assert) {
   for (const [path, files] of [
-    ['.env', { '.gitignore': '.env\n', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n', '.env': 'local\n' }],
-    ['.env.local', { '.gitignore': '.env*\n', '.worktreeinclude': '.env.local\n', '.env.local.example': 'KEY=value\n', '.env.local': 'local\n' }],
-    ['settings/.env.production', { '.gitignore': '.env*\n', '.worktreeinclude': 'settings/.env.production\n', 'settings/.env.production.example': 'KEY=value\n', 'settings/.env.production': 'local\n' }],
+    [
+      '.env',
+      { '.gitignore': '.env\n', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n', '.env': 'local\n' },
+    ],
+    [
+      '.env.local',
+      {
+        '.gitignore': '.env*\n',
+        '.worktreeinclude': '.env.local\n',
+        '.env.local.example': 'KEY=value\n',
+        '.env.local': 'local\n',
+      },
+    ],
+    [
+      'settings/.env.production',
+      {
+        '.gitignore': '.env*\n',
+        '.worktreeinclude': 'settings/.env.production\n',
+        'settings/.env.production.example': 'KEY=value\n',
+        'settings/.env.production': 'local\n',
+      },
+    ],
   ]) {
     const ids = idsFor(files);
     assert(ids.includes('env/tracked'), `tracked ${path}: expected env/tracked, got [${ids.join(', ')}]`);
   }
   const ids = idsFor({
-    '.gitignore': '.env*\n', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n',
+    '.gitignore': '.env*\n',
+    '.worktreeinclude': '.env\n',
+    '.env.example': 'KEY=value\n',
   });
   assert(!ids.includes('env/tracked'), `tracked scaffold: got [${ids.join(', ')}]`);
   const uppercase = idsFor({
-    '.gitignore': '.ENV\n', '.worktreeinclude': '.ENV\n', '.ENV.example': 'KEY=value\n', '.ENV': 'local\n',
+    '.gitignore': '.ENV\n',
+    '.worktreeinclude': '.ENV\n',
+    '.ENV.example': 'KEY=value\n',
+    '.ENV': 'local\n',
   });
-  assert(uppercase.includes('env/tracked'), `tracked uppercase .ENV: expected env/tracked, got [${uppercase.join(', ')}]`);
+  assert(
+    uppercase.includes('env/tracked'),
+    `tracked uppercase .ENV: expected env/tracked, got [${uppercase.join(', ')}]`,
+  );
 }
 
 function testIndexFailure(assert) {
@@ -170,16 +232,29 @@ function testGitFailures(assert) {
 
 function testIgnoreSources(assert) {
   const nestedNegation = idsFor({
-    '.gitignore': '.env\n', '.worktreeinclude': 'settings/.env\n',
-    '.env.example': 'KEY=value\n', 'settings/.gitignore': '.env\n!.env\n',
+    '.gitignore': '.env\n',
+    '.worktreeinclude': 'settings/.env\n',
+    '.env.example': 'KEY=value\n',
+    'settings/.gitignore': '.env\n!.env\n',
     'settings/.env.example': 'KEY=value\n',
   });
-  assert(nestedNegation.includes('env/worktreeinclude-path'), `nested .gitignore negation must be respected, got [${nestedNegation.join(', ')}]`);
+  assert(
+    nestedNegation.includes('env/worktreeinclude-path'),
+    `nested .gitignore negation must be respected, got [${nestedNegation.join(', ')}]`,
+  );
 
-  const untrackedIgnore = idsFor({
-    '.gitignore': '.env\n', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n',
-  }, { untracked: ['.gitignore'] });
-  assert(untrackedIgnore.includes('env/ignore'), `an untracked repository .gitignore must not satisfy the rule, got [${untrackedIgnore.join(', ')}]`);
+  const untrackedIgnore = idsFor(
+    {
+      '.gitignore': '.env\n',
+      '.worktreeinclude': '.env\n',
+      '.env.example': 'KEY=value\n',
+    },
+    { untracked: ['.gitignore'] },
+  );
+  assert(
+    untrackedIgnore.includes('env/ignore'),
+    `an untracked repository .gitignore must not satisfy the rule, got [${untrackedIgnore.join(', ')}]`,
+  );
 
   const root = fixture({ '.gitignore': '', '.worktreeinclude': '.env\n', '.env.example': 'KEY=value\n' });
   const globalIgnore = join(root, 'outside', '.gitignore');
@@ -193,7 +268,10 @@ function testIgnoreSources(assert) {
     process.env.GIT_CONFIG_VALUE_0 = globalIgnore;
     const ids = [];
     checkEnv(root, (id) => ids.push(id));
-    assert(ids.includes('env/ignore'), `a global file named .gitignore must not satisfy the rule, got [${ids.join(', ')}]`);
+    assert(
+      ids.includes('env/ignore'),
+      `a global file named .gitignore must not satisfy the rule, got [${ids.join(', ')}]`,
+    );
   } finally {
     names.forEach((name, index) => {
       if (previous[index] === undefined) delete process.env[name];
@@ -217,7 +295,10 @@ function testPrePush(assert) {
   try {
     mkdirSync(join(standard, 'scripts'), { recursive: true });
     mkdirSync(join(standard, 'scripts', 'lib'), { recursive: true });
-    writeFileSync(join(standard, 'scripts', 'lib', 'env-pre-push.mjs'), readFileSync(join(ROOT, 'lib', 'env-pre-push.mjs')));
+    writeFileSync(
+      join(standard, 'scripts', 'lib', 'env-pre-push.mjs'),
+      readFileSync(join(ROOT, 'lib', 'env-pre-push.mjs')),
+    );
     writeFileSync(join(standard, 'scripts', 'lib', 'env-path.mjs'), readFileSync(join(ROOT, 'lib', 'env-path.mjs')));
     runGit(['init', '--bare', '-q', bare], base);
     runGit(['-c', 'init.defaultBranch=main', 'init', '-q', clone], base);
@@ -233,10 +314,20 @@ function testPrePush(assert) {
     chmodSync(hook, 0o755);
 
     const push = (source, destination, expected, label) => {
-      const result = spawnSync('git', ['push', 'origin', `${source}:refs/heads/${destination}`], { cwd: clone, windowsHide: true, encoding: 'utf8' });
-      assert((result.status === 0) === expected, `${label}: expected ${expected ? 'allowed' : 'rejected'}, got ${(result.stderr ?? '').trim()}`);
+      const result = spawnSync('git', ['push', 'origin', `${source}:refs/heads/${destination}`], {
+        cwd: clone,
+        windowsHide: true,
+        encoding: 'utf8',
+      });
+      assert(
+        (result.status === 0) === expected,
+        `${label}: expected ${expected ? 'allowed' : 'rejected'}, got ${(result.stderr ?? '').trim()}`,
+      );
       const advertised = runGit(['ls-remote', '--heads', 'origin', `refs/heads/${destination}`], clone).trim();
-      assert(Boolean(advertised) === expected, `${label}: remote ref ${expected ? 'should exist' : 'must not be created'}`);
+      assert(
+        Boolean(advertised) === expected,
+        `${label}: remote ref ${expected ? 'should exist' : 'must not be created'}`,
+      );
     };
     push('main', 'main', true, 'ordinary change to personal fork');
 
@@ -248,7 +339,12 @@ function testPrePush(assert) {
     push('refs/tags/env-tag', 'tag-env', false, 'tag source containing env is blocked');
     push(envCommit, 'raw-sha-env', false, 'raw object id source containing env is blocked');
     runGit(['update-ref', 'refs/remotes/origin/env-tracking', envCommit], clone);
-    push('refs/remotes/origin/env-tracking', 'remote-tracking-env', false, 'remote-tracking ref source containing env is blocked');
+    push(
+      'refs/remotes/origin/env-tracking',
+      'remote-tracking-env',
+      false,
+      'remote-tracking ref source containing env is blocked',
+    );
     rmSync(join(clone, '.env'));
     runGit(['add', '-u'], clone);
     runGit(['commit', '-m', 'delete env'], clone);
@@ -273,7 +369,10 @@ function testPrePush(assert) {
     const mergeTree = runGit(['write-tree'], clone).trim();
     const safeTree = runGit(['rev-parse', `${safeCommit}^{tree}`], clone).trim();
     const otherParent = runGit(['commit-tree', safeTree, '-p', safeCommit, '-m', 'second clean parent'], clone).trim();
-    const mergeOnlyEnv = runGit(['commit-tree', mergeTree, '-p', safeCommit, '-p', otherParent, '-m', 'merge-only env addition'], clone).trim();
+    const mergeOnlyEnv = runGit(
+      ['commit-tree', mergeTree, '-p', safeCommit, '-p', otherParent, '-m', 'merge-only env addition'],
+      clone,
+    ).trim();
     push(mergeOnlyEnv, 'merge-commit-env', false, 'env introduced by merge commit is blocked');
     runGit(['read-tree', safeCommit], clone);
 
@@ -290,7 +389,11 @@ function testPrePush(assert) {
     runGit(['add', '.env.example'], clone);
     runGit(['commit', '-m', 'example only'], clone);
     push('main', 'main-example-only', true, 'example file is allowed');
-    const deletion = spawnSync('git', ['push', 'origin', ':refs/heads/main'], { cwd: clone, windowsHide: true, encoding: 'utf8' });
+    const deletion = spawnSync('git', ['push', 'origin', ':refs/heads/main'], {
+      cwd: clone,
+      windowsHide: true,
+      encoding: 'utf8',
+    });
     assert(deletion.status === 0, `deletion ref is allowed, got ${(deletion.stderr ?? '').trim()}`);
   } finally {
     rmSync(base, { recursive: true, force: true });

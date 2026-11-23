@@ -51,15 +51,24 @@ export function requiredGaps({ kind, live, jobs }) {
   const required = new Set(live);
   for (const context of expected) {
     if (!required.has(context)) {
-      gaps.push({ id: 'ruleset/required-missing', message: `${context} is expected for this repository and is not required` });
+      gaps.push({
+        id: 'ruleset/required-missing',
+        message: `${context} is expected for this repository and is not required`,
+      });
     }
   }
   for (const context of live) {
     const job = jobOf(context);
     if (!jobs.has(job)) {
-      gaps.push({ id: 'ruleset/required-no-job', message: `${context} is required, but ci.yml has no "${job}" job to report it` });
+      gaps.push({
+        id: 'ruleset/required-no-job',
+        message: `${context} is required, but ci.yml has no "${job}" job to report it`,
+      });
     } else if (!expected.includes(context) && !EXTRA_TEST_JOB.test(context)) {
-      gaps.push({ id: 'ruleset/required-unexpected', message: `${context} is required, but this repository does not expect it` });
+      gaps.push({
+        id: 'ruleset/required-unexpected',
+        message: `${context} is required, but this repository does not expect it`,
+      });
     }
   }
   return gaps;
@@ -121,8 +130,15 @@ function patternMatchesMain(pattern, defaultBranch) {
 export function mainTargetStatus(ruleset, defaultBranch = 'main') {
   const conditions = ruleset?.conditions;
   const refName = conditions?.ref_name;
-  if (ruleset?.target !== 'branch' || !conditions || Object.keys(conditions).some((key) => key !== 'ref_name') || !refName
-    || !Array.isArray(refName.include) || !Array.isArray(refName.exclude)) return 'unknown';
+  if (
+    ruleset?.target !== 'branch' ||
+    !conditions ||
+    Object.keys(conditions).some((key) => key !== 'ref_name') ||
+    !refName ||
+    !Array.isArray(refName.include) ||
+    !Array.isArray(refName.exclude)
+  )
+    return 'unknown';
   const includes = refName.include.map((pattern) => patternMatchesMain(pattern, defaultBranch));
   const excludes = refName.exclude.map((pattern) => patternMatchesMain(pattern, defaultBranch));
   if (includes.includes(null) || excludes.includes(null)) return 'unknown';
@@ -134,7 +150,10 @@ export function mainTargetStatus(ruleset, defaultBranch = 'main') {
 export function rulesetGaps(ruleset, { kind, jobs, defaultBranch = 'main' }) {
   const gaps = [];
   if (ruleset?.enforcement !== 'active') {
-    gaps.push({ id: 'ruleset/enforcement', message: `protect-main enforcement is ${ruleset?.enforcement ?? 'missing'}, expected active` });
+    gaps.push({
+      id: 'ruleset/enforcement',
+      message: `protect-main enforcement is ${ruleset?.enforcement ?? 'missing'}, expected active`,
+    });
   }
   const target = mainTargetStatus(ruleset, defaultBranch);
   if (target !== 'targeted') {
@@ -145,11 +164,14 @@ export function rulesetGaps(ruleset, { kind, jobs, defaultBranch = 'main' }) {
   if (!Array.isArray(rules)) gaps.push({ id: 'ruleset/rules', message: 'protect-main rules are unreadable' });
   const rule = (Array.isArray(rules) ? rules : []).find((entry) => entry?.type === 'required_status_checks');
   const required = rule?.parameters?.required_status_checks;
-  if (rule && !Array.isArray(required)) gaps.push({ id: 'ruleset/required-checks', message: 'protect-main required status checks are unreadable' });
+  if (rule && !Array.isArray(required))
+    gaps.push({ id: 'ruleset/required-checks', message: 'protect-main required status checks are unreadable' });
   if (rule?.parameters?.strict_required_status_checks_policy !== true) {
     gaps.push({ id: 'ruleset/required-strict', message: 'protect-main does not require branches to be up to date' });
   }
-  const live = (Array.isArray(required) ? required : []).map((entry) => entry?.context).filter((context) => typeof context === 'string');
+  const live = (Array.isArray(required) ? required : [])
+    .map((entry) => entry?.context)
+    .filter((context) => typeof context === 'string');
   return [...gaps, ...requiredGaps({ kind, live, jobs })];
 }
 
@@ -158,7 +180,10 @@ export function protectMainSelection(count) {
   return {
     ok: false,
     id: count === 0 ? 'ruleset/protect-main' : 'ruleset/ambiguous',
-    message: count === 0 ? 'public repository has no protect-main ruleset' : `found ${count} protect-main rulesets; expected exactly one`,
+    message:
+      count === 0
+        ? 'public repository has no protect-main ruleset'
+        : `found ${count} protect-main rulesets; expected exactly one`,
   };
 }
 
@@ -169,7 +194,8 @@ export function uncoveredCallGaps(kind, callsCoverage) {
   return [
     {
       id: 'ci/coverage-unrequired',
-      message: 'ci.yml calls the coverage workflow, but the exception file declares this repository as having no coverage job',
+      message:
+        'ci.yml calls the coverage workflow, but the exception file declares this repository as having no coverage job',
     },
   ];
 }

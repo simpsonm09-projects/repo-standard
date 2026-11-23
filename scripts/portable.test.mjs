@@ -39,7 +39,11 @@ function testSpacedUnicodePaths(check) {
     const found = listFiles(root, ['.txt']).map(toPosix);
     check(found.join(','), toPosix(file), 'listFiles finds a file under a spaced, non-ASCII directory');
     check(found.length, 1, 'listFiles returns only the requested extension');
-    check(listFiles(root, ['.log']).map(toPosix).join(','), toPosix(other), 'listFiles selects the file for the requested extension');
+    check(
+      listFiles(root, ['.log']).map(toPosix).join(','),
+      toPosix(other),
+      'listFiles selects the file for the requested extension',
+    );
     check(readText(file), `${BOM}${BODY}`, 'readText round-trips a spaced, non-ASCII path');
     check(normalize(readText(file)), BODY, 'normalize strips a leading byte-order mark');
     check(toPosix(join(root, 'sub', 'leaf')).includes('\\'), false, 'toPosix leaves no backslash separator');
@@ -59,13 +63,19 @@ function testPathDiscovery(check) {
     mkdirSync(binDir, { recursive: true });
     writeFileSync(join(binDir, onDisk), '');
     const env = { PATH: binDir, PATHEXT: '.exe' };
-    check(which(command, { env, platform: process.platform }), join(binDir, onDisk),
-      'which finds a file under a spaced, non-ASCII PATH entry');
+    check(
+      which(command, { env, platform: process.platform }),
+      join(binDir, onDisk),
+      'which finds a file under a spaced, non-ASCII PATH entry',
+    );
 
     const dirsOnly = join(root, 'directories only');
     mkdirSync(join(dirsOnly, onDisk), { recursive: true });
-    check(which(command, { env: { PATH: dirsOnly, PATHEXT: '.exe' }, platform: process.platform }), null,
-      'which rejects a directory named like the command');
+    check(
+      which(command, { env: { PATH: dirsOnly, PATHEXT: '.exe' }, platform: process.platform }),
+      null,
+      'which rejects a directory named like the command',
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

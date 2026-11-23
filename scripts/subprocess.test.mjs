@@ -68,15 +68,23 @@ const STYLES = {
   'renamed import': (args) => lines("import { spawnSync as run } from 'node:child_process';", `run(${args});`),
   'namespace import': (args) => lines("import * as cp from 'node:child_process';", `cp.spawnSync(${args});`),
   'default import': (args) => lines("import cp from 'child_process';", `cp.spawnSync(${args});`),
-  'default bound by name': (args) => lines("import { default as cp } from 'node:child_process';", `cp.spawnSync(${args});`),
-  'default member of a namespace': (args) => lines("import * as cp from 'node:child_process';", `cp.default.spawnSync(${args});`),
-  'destructured require': (args) => lines("const { spawnSync } = require('node:child_process');", `spawnSync(${args});`),
+  'default bound by name': (args) =>
+    lines("import { default as cp } from 'node:child_process';", `cp.spawnSync(${args});`),
+  'default member of a namespace': (args) =>
+    lines("import * as cp from 'node:child_process';", `cp.default.spawnSync(${args});`),
+  'destructured require': (args) =>
+    lines("const { spawnSync } = require('node:child_process');", `spawnSync(${args});`),
   'renamed require': (args) => lines("const { spawnSync: run } = require('child_process');", `run(${args});`),
   'namespace require': (args) => lines("const cp = require('node:child_process');", `cp.spawnSync(${args});`),
   'dynamic import': (args) => lines("const { spawnSync } = await import('node:child_process');", `spawnSync(${args});`),
   'chained require': (args) => `require('node:child_process').spawnSync(${args});`,
   'injected default': (args) =>
-    lines("import { spawnSync } from 'node:child_process';", 'export function go(spawn = spawnSync) {', `  return spawn(${args});`, '}'),
+    lines(
+      "import { spawnSync } from 'node:child_process';",
+      'export function go(spawn = spawnSync) {',
+      `  return spawn(${args});`,
+      '}',
+    ),
 };
 
 function testImportStyles(assert) {
@@ -108,7 +116,12 @@ function testOptionsShapes(assert) {
   expectClean(assert, 'a spread before the key', call("'git', [], { ...base, windowsHide: true }"));
   expectGap(assert, 'options held in a variable', call("'git', [], opts"), 'variable');
   expectGap(assert, 'a spawn with argv only', call("'git', args"), 'has no options');
-  expectGap(assert, 'exec with a callback and no options', lines(IMPORT, "exec('git status', () => {});"), 'has no options');
+  expectGap(
+    assert,
+    'exec with a callback and no options',
+    lines(IMPORT, "exec('git status', () => {});"),
+    'has no options',
+  );
   expectClean(
     assert,
     'exec with options before the callback',
@@ -120,22 +133,30 @@ function testOptionsShapes(assert) {
     lines(IMPORT, "execFile('git', ['x'], { encoding: 'utf8' }, () => {});"),
     'no literal windowsHide',
   );
-  expectClean(assert, 'fork with options in the second slot', lines(IMPORT, "fork('worker.mjs', { windowsHide: true });"));
+  expectClean(
+    assert,
+    'fork with options in the second slot',
+    lines(IMPORT, "fork('worker.mjs', { windowsHide: true });"),
+  );
   expectGap(assert, 'execFileSync with no options', lines(IMPORT, "execFileSync('git', ['x']);"), 'has no options');
 }
 
 function testNonCalls(assert) {
   expectClean(assert, 'a call inside a comment', lines(IMPORT, "// spawnSync('git', ['status']);"));
-  expectClean(assert, 'a call inside a string', lines(IMPORT, "const text = \"spawnSync('git')\";"));
+  expectClean(assert, 'a call inside a string', lines(IMPORT, 'const text = "spawnSync(\'git\')";'));
   expectClean(assert, 'a property call on an object', lines(IMPORT, "const o = {}; o.spawnSync('git');"));
-  expectClean(assert, 'a function declaration named like a child_process function', lines(IMPORT, 'function spawnSync(a) { return a; }'));
+  expectClean(
+    assert,
+    'a function declaration named like a child_process function',
+    lines(IMPORT, 'function spawnSync(a) { return a; }'),
+  );
 }
 
 function testTokenizer(assert) {
   expectGap(
     assert,
     'a regex holding quotes before a call',
-    lines(IMPORT, "const re = /['\"`]/g;", "spawnSync('git', []);"),
+    lines(IMPORT, 'const re = /[\'"`]/g;', "spawnSync('git', []);"),
     'no options',
   );
   expectGap(
@@ -151,7 +172,10 @@ function testTokenizer(assert) {
     'no options',
   );
   const gaps = findSubprocessGaps(lines(IMPORT, '', '', "spawnSync('git', [],", "  { encoding: 'utf8' });"));
-  assert(gaps.length === 1 && gaps[0].line === 4, `line numbers: expected one gap on line 4, got ${JSON.stringify(gaps)}`);
+  assert(
+    gaps.length === 1 && gaps[0].line === 4,
+    `line numbers: expected one gap on line 4, got ${JSON.stringify(gaps)}`,
+  );
 }
 
 function runCli(script, args) {
@@ -177,15 +201,24 @@ function testStandardCli(assert) {
   try {
     const failing = runCli(CHECK_STANDARD, [bad]);
     assert(failing.status === 1, `check-standard exits 1 on a bad call, got ${failing.status}`);
-    assert(cell(failing.stdout, 'subprocess') === 'GAP(1)', `bad call: expected GAP(1), got ${cell(failing.stdout, 'subprocess')}`);
+    assert(
+      cell(failing.stdout, 'subprocess') === 'GAP(1)',
+      `bad call: expected GAP(1), got ${cell(failing.stdout, 'subprocess')}`,
+    );
     assert(
       failing.stdout.includes('gap subprocess/windows-hide: scripts/tool.mjs:2 spawnSync()'),
       `bad call: expected file:line in the gap, got ${failing.stdout}`,
     );
     const passing = runCli(CHECK_STANDARD, [good]);
-    assert(cell(passing.stdout, 'subprocess') === 'ok', `good call: expected ok, got ${cell(passing.stdout, 'subprocess')}`);
+    assert(
+      cell(passing.stdout, 'subprocess') === 'ok',
+      `good call: expected ok, got ${cell(passing.stdout, 'subprocess')}`,
+    );
     const skipped = runCli(CHECK_STANDARD, [excluded]);
-    assert(cell(skipped.stdout, 'subprocess') === 'ok', `excluded trees: expected ok, got ${cell(skipped.stdout, 'subprocess')}`);
+    assert(
+      cell(skipped.stdout, 'subprocess') === 'ok',
+      `excluded trees: expected ok, got ${cell(skipped.stdout, 'subprocess')}`,
+    );
   } finally {
     for (const root of [bad, good, excluded]) rmSync(root, { recursive: true, force: true });
   }
@@ -195,7 +228,10 @@ function testCheckRepoCli(assert) {
   const bad = fixture({ 'scripts/tool.mjs': lines(IMPORT, `spawnSync(${BAD});`) });
   try {
     const result = runCli(CHECK_REPO, [bad, '--repo', 'simpsonm09-org/fixture', '--no-api']);
-    assert(cell(result.stdout, 'subprocess') === 'GAP(1)', `check-repo: expected GAP(1), got ${cell(result.stdout, 'subprocess')}`);
+    assert(
+      cell(result.stdout, 'subprocess') === 'GAP(1)',
+      `check-repo: expected GAP(1), got ${cell(result.stdout, 'subprocess')}`,
+    );
   } finally {
     rmSync(bad, { recursive: true, force: true });
   }

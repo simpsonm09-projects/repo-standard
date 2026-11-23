@@ -4,7 +4,22 @@
 // one cannot unbalance the rest of the file. Template text is a `str` token with no
 // quotes, so compare keywords and punctuation by type as well as by value.
 
-const REGEX_AFTER = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw', 'case', 'do', 'else', 'yield', 'await']);
+const REGEX_AFTER = new Set([
+  'return',
+  'typeof',
+  'instanceof',
+  'in',
+  'of',
+  'new',
+  'delete',
+  'void',
+  'throw',
+  'case',
+  'do',
+  'else',
+  'yield',
+  'await',
+]);
 const CLOSERS = new Set([')', ']', '}']);
 
 function scan(src, start, pattern) {

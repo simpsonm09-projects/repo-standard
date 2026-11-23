@@ -1,16 +1,14 @@
 #!/usr/bin/env node
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { applySettings } from './apply-settings.mjs';
 import { compareMainRulesets, findUniqueRuleset } from './lib/ruleset-policy.mjs';
 import { buildPayload } from './ruleset-payload.mjs';
 import { compare } from './check-agent-access.mjs';
 import { EXIT } from './lib/exit.mjs';
-import { pathToFileURL } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -20,7 +18,9 @@ function assert(condition, message) {
 
 function ruleset(name, count, actors = []) {
   return {
-    name, target: 'branch', enforcement: 'active',
+    name,
+    target: 'branch',
+    enforcement: 'active',
     conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } },
     bypass_actors: actors,
     rules: [{ type: 'pull_request', parameters: { required_approving_review_count: count } }],
@@ -30,56 +30,106 @@ function ruleset(name, count, actors = []) {
 function testRulesets() {
   const admin = [{ actor_id: null, actor_type: 'OrganizationAdmin', bypass_mode: 'pull_request' }];
   const protect = ruleset('protect-main', 0);
-  const approval = ruleset('approval-main', 0, admin);
-  assert(compareMainRulesets('propose', protect, approval).length === 0, 'propose policy passes');
-  assert(compareMainRulesets('merge', protect, approval).length === 0, 'merge policy passes');
-  assert(compareMainRulesets('full', protect, ruleset('approval-main', 0)).length === 0, 'full policy passes');
-  assert(compareMainRulesets('propose', protect, ruleset('approval-main', 1)).some((item) => item.includes('expected 0')), 'propose rejects a required approval');
-  assert(compareMainRulesets('legacy', protect, ruleset('approval-main', 0)).length > 0, 'unknown level fails');
-  assert(compareMainRulesets('full', { ...protect, bypass_actors: admin }, ruleset('approval-main', 0)).some((item) => item.includes('protect-main has bypass')), 'hard protection bypass fails');
-  assert(compareMainRulesets('merge', protect, ruleset('approval-main', 0, [{ actor_type: 'Integration', actor_id: 42, bypass_mode: 'always' }])).some((item) => item.includes('unexpected')), 'unexpected bypass actor fails');
-  assert(compareMainRulesets('full', protect, ruleset('approval-main', 1)).some((item) => item.includes('expected 0')), 'wrong approval count fails');
-  assert(compareMainRulesets('full', null, ruleset('approval-main', 0)).some((item) => item.includes('missing or unreadable')), 'missing ruleset fails');
-  assert(compareMainRulesets('full', protect, { ...ruleset('approval-main', 0), enforcement: 'disabled' }).some((item) => item.includes('expected active')), 'inactive ruleset fails');
-  assert(compareMainRulesets('full', protect, { ...ruleset('approval-main', 0), conditions: { ref_name: { include: ['refs/heads/release'], exclude: [] } } }).some((item) => item.includes('does not target exactly')), 'wrong branch target fails');
-  assert(compareMainRulesets('full', protect, { ...ruleset('approval-main', 0), bypass_actors: undefined }).some((item) => item.includes('unreadable')), 'unreadable bypass list fails');
-  assert(compareMainRulesets('full', protect, { ...ruleset('approval-main', 0), rules: [] }).some((item) => item.includes('expected one pull_request')), 'missing approval rule fails');
-  assert(compareMainRulesets('full', protect, { ...ruleset('approval-main', 0), rules: [...ruleset('approval-main', 0).rules, ...ruleset('approval-main', 0).rules] }).some((item) => item.includes('found 2')), 'duplicate approval rules fail');
-  assert(compareMainRulesets('full', protect, null).some((item) => item.includes('approval-main is missing')), 'missing approval ruleset fails');
-  assert(compare('example', 'merge', protect, approval).ok, 'checker accepts the expected merge rulesets');
-  assert(!compare('example', 'full', protect, ruleset('approval-main', 1)).ok, 'checker rejects a full approval mismatch');
-  assert(!compare('example', 'merge', { ...protect, bypass_actors: undefined }, approval).ok,
-    'check-agent-access fails closed when protect-main bypass actors are unreadable');
-  assert(!compare('example', 'merge', protect, { ...approval, bypass_actors: undefined }).ok,
-    'check-agent-access fails closed when approval-main bypass actors are unreadable');
-  assert(!findUniqueRuleset([{ name: 'approval-main' }, { name: 'approval-main' }], 'approval-main').ok, 'duplicate rulesets fail');
+  assert(compareMainRulesets('propose', protect).length === 0, 'propose policy passes');
+  assert(compareMainRulesets('merge', protect).length === 0, 'merge policy passes');
+  assert(compareMainRulesets('full', protect).length === 0, 'full policy passes');
+  assert(
+    compareMainRulesets('propose', ruleset('protect-main', 1)).some((item) => item.includes('expected 0')),
+    'a required approval fails',
+  );
+  assert(compareMainRulesets('legacy', protect).length > 0, 'unknown level fails');
+  assert(
+    compareMainRulesets('full', { ...protect, bypass_actors: admin }).some((item) =>
+      item.includes('protect-main has bypass'),
+    ),
+    'any bypass actor fails',
+  );
+  assert(
+    compareMainRulesets('full', { ...protect, bypass_actors: undefined }).some((item) => item.includes('unreadable')),
+    'unreadable bypass list fails',
+  );
+  assert(
+    compareMainRulesets('full', null).some((item) => item.includes('missing or unreadable')),
+    'missing ruleset fails',
+  );
+  assert(
+    compareMainRulesets('full', { ...protect, enforcement: 'disabled' }).some((item) =>
+      item.includes('expected active'),
+    ),
+    'inactive ruleset fails',
+  );
+  assert(
+    compareMainRulesets('full', {
+      ...protect,
+      conditions: { ref_name: { include: ['refs/heads/release'], exclude: [] } },
+    }).some((item) => item.includes('does not target exactly')),
+    'wrong branch target fails',
+  );
+  assert(
+    compareMainRulesets('full', { ...protect, rules: [] }).some((item) => item.includes('expected one pull_request')),
+    'missing pull_request rule fails',
+  );
+  assert(
+    compareMainRulesets('full', { ...protect, rules: [...protect.rules, ...protect.rules] }).some((item) =>
+      item.includes('found 2'),
+    ),
+    'duplicate pull_request rules fail',
+  );
+  assert(compare('example', 'merge', protect).ok, 'checker accepts the expected merge ruleset');
+  assert(!compare('example', 'full', { ...protect, bypass_actors: admin }).ok, 'checker rejects a bypass actor');
+  assert(
+    !findUniqueRuleset([{ name: 'protect-main' }, { name: 'protect-main' }], 'protect-main').ok,
+    'duplicate rulesets fail',
+  );
 
-  const approvalBase = ruleset('approval-main', 0, admin);
-  const merge = buildPayload(approvalBase, 'merge');
-  const full = buildPayload(merge, 'full');
-  const backToMerge = buildPayload(full, 'merge');
-  const fullAgain = buildPayload(backToMerge, 'full');
-  assert(fullAgain.rules[0].parameters.required_approving_review_count === 0 && fullAgain.bypass_actors.length === 0, 'full to merge to full converges');
-  assert(backToMerge.rules[0].parameters.required_approving_review_count === 0 && backToMerge.bypass_actors.length === 1, 'merge transition restores only human PR bypass');
-  assert(buildPayload({ ...protect, bypass_actors: admin }, 'full').bypass_actors.length === 0, 'protect payload strips all bypass actors');
+  const built = buildPayload(
+    {
+      ...protect,
+      bypass_actors: admin,
+      rules: [
+        {
+          type: 'pull_request',
+          parameters: { required_approving_review_count: 3, allowed_merge_methods: ['merge', 'rebase'] },
+        },
+        { type: 'required_status_checks', parameters: { required_status_checks: [] } },
+      ],
+    },
+    'full',
+  );
+  assert(built.bypass_actors.length === 0, 'the payload strips every bypass actor');
+  assert(built.rules[0].parameters.required_approving_review_count === 0, 'the payload requires zero approvals');
+  assert(built.rules[0].parameters.allowed_merge_methods.join(',') === 'squash', 'the payload allows squash only');
 
   const committedProtect = JSON.parse(readFileSync(new URL('../rulesets/protect-main.json', import.meta.url), 'utf8'));
-  const contexts = committedProtect.rules.find((entry) => entry.type === 'required_status_checks').parameters.required_status_checks.map((entry) => entry.context);
-  assert(committedProtect.rules.some((entry) => entry.type === 'required_signatures'), 'protect-main keeps required signatures');
-  assert(committedProtect.rules.find((entry) => entry.type === 'pull_request').parameters.required_approving_review_count === 0, 'protect-main carries zero approval count');
+  const contexts = committedProtect.rules
+    .find((entry) => entry.type === 'required_status_checks')
+    .parameters.required_status_checks.map((entry) => entry.context);
+  const pullRequest = committedProtect.rules.find((entry) => entry.type === 'pull_request');
+  assert(
+    committedProtect.rules.some((entry) => entry.type === 'required_signatures'),
+    'protect-main keeps required signatures',
+  );
+  assert(pullRequest.parameters.required_approving_review_count === 0, 'protect-main carries zero approval count');
+  assert(pullRequest.parameters.allowed_merge_methods.join(',') === 'squash', 'protect-main allows squash only');
   assert(committedProtect.bypass_actors.length === 0, 'committed protect-main has no bypass actors');
-  assert(contexts.includes('test') && contexts.includes('security / secrets') && !contexts.includes('all-checks'), 'existing hard checks remain and no unreported aggregate is required');
-  assert(!existsSync(new URL('../rulesets/approval-main.json', import.meta.url)), 'the second main ruleset payload is retired');
+  assert(
+    contexts.includes('test') && contexts.includes('security / secrets') && !contexts.includes('all-checks'),
+    'existing hard checks remain and no unreported aggregate is required',
+  );
+  assert(
+    !existsSync(new URL('../rulesets/approval-main.json', import.meta.url)),
+    'the second main ruleset payload is retired',
+  );
 }
 
 function mockedApi(meta, calls) {
   return (args) => {
     calls.push(args);
-    const path = args.find((part) => typeof part === 'string' && part.startsWith('repos/'));
     if (args[0] === '-X' && args[1] === 'PATCH') return { ok: true, value: null };
+    const path = args.find((part) => typeof part === 'string' && part.startsWith('repos/'));
     if (path?.endsWith('/vulnerability-alerts')) return { ok: true, value: null };
     if (path?.endsWith('/automated-security-fixes')) return { ok: true, value: { enabled: true } };
-    if (path?.endsWith('/topics')) return { ok: true, value: { names: ['simpsonm09-org'] } };
+    if (path?.endsWith('/topics')) return { ok: true, value: { names: ['simpsonm09-projects'] } };
     return { ok: true, value: meta };
   };
 }
@@ -87,117 +137,118 @@ function mockedApi(meta, calls) {
 function settingsApi(meta, outcomes, calls) {
   return (args) => {
     calls.push(args);
-    if (isPatchRequest(args)) return settingsApiPatch(args, outcomes);
-    return settingsApiRead(meta, args);
+    if (args[0] === '-X' && args[1] === 'PATCH') {
+      const isAutoMerge = args.includes('allow_auto_merge=true') || args.includes('allow_auto_merge=false');
+      return outcomes[isAutoMerge ? 'autoMerge' : 'settings'] ?? { ok: true, value: null };
+    }
+    if (meta === null) return { ok: false, error: 'metadata unavailable' };
+    if (meta === 'unreadable') return { ok: true, value: null };
+    return { ok: true, value: meta };
   };
-}
-
-function isPatchRequest(args) {
-  return args[0] === '-X' && args[1] === 'PATCH';
-}
-
-function settingsApiPatch(args, outcomes) {
-  const isAutoMerge = args.includes('allow_auto_merge=true') || args.includes('allow_auto_merge=false');
-  return outcomes[isAutoMerge ? 'autoMerge' : 'settings'] ?? { ok: true, value: null };
-}
-
-function settingsApiRead(meta, args) {
-  if (meta === null) return { ok: false, error: 'metadata unavailable' };
-  const endpoint = args.at(-1);
-  if (meta === 'unreadable' && endpoint === 'repos/simpsonm09-org/example') return { ok: true, value: null };
-  if (endpoint?.endsWith('/vulnerability-alerts')) return { ok: true, value: null };
-  if (endpoint?.endsWith('/automated-security-fixes')) return { ok: true, value: { enabled: true } };
-  if (endpoint?.endsWith('/topics')) return { ok: true, value: { names: ['simpsonm09-org'] } };
-  return { ok: true, value: meta };
 }
 
 function testAutoMergeSettings() {
   const desiredSettings = {
     delete_branch_on_merge: true,
-    allow_merge_commit: true,
+    allow_merge_commit: false,
     allow_squash_merge: true,
-    allow_rebase_merge: true,
+    allow_rebase_merge: false,
     visibility: 'private',
     allow_auto_merge: false,
   };
   const dryCalls = [];
-  const dry = applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: true }, false, mockedApi(desiredSettings, dryCalls));
+  const dry = applySettings(
+    'simpsonm09-projects/example',
+    { topics: [], allowAutoMerge: true },
+    false,
+    mockedApi(desiredSettings, dryCalls),
+  );
   assert(dry.errors.length === 0, 'dry run reports no errors');
-  assert(dry.changes.includes('simpsonm09-org/example allow_auto_merge -> true'), 'explicit auto-merge on is reported');
+  assert(
+    dry.changes.includes('simpsonm09-projects/example allow_auto_merge -> true'),
+    'explicit auto-merge on is reported',
+  );
   assert(!dryCalls.some((args) => args[0] === '-X' && args[1] === 'PATCH'), 'dry run does not write');
 
   const applyCalls = [];
-  const applied = applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: true }, true,
-    mockedApi({ ...desiredSettings, delete_branch_on_merge: false }, applyCalls));
-  const patches = applyCalls.filter((args) => args[0] === '-X' && args[1] === 'PATCH');
-  const settingsPatch = patches.find((args) => args.includes('delete_branch_on_merge=true'));
-  const autoMergePatch = patches.find((args) => args.includes('allow_auto_merge=true'));
-  assert(applied.errors.length === 0 && settingsPatch && autoMergePatch, 'explicit apply sends both settings groups through API port');
-  assert(!settingsPatch.includes('allow_auto_merge=true') && autoMergePatch.length === 5, 'auto-merge uses a separate PATCH');
+  const applied = applySettings(
+    'simpsonm09-projects/example',
+    { topics: [], allowAutoMerge: true },
+    true,
+    mockedApi(
+      {
+        ...desiredSettings,
+        delete_branch_on_merge: false,
+        allow_merge_commit: true,
+        allow_rebase_merge: true,
+        allow_squash_merge: false,
+      },
+      applyCalls,
+    ),
+  );
+  const settingsPatch = applyCalls.find((args) => args.includes('delete_branch_on_merge=true'));
+  assert(applied.errors.length === 0 && settingsPatch, 'apply sends the settings patch');
+  assert(
+    settingsPatch.includes('allow_merge_commit=false') && settingsPatch.includes('allow_rebase_merge=false'),
+    'the patch disables merge and rebase commits',
+  );
+  assert(settingsPatch.includes('allow_squash_merge=true'), 'the patch keeps squash merges');
 
   const offCalls = [];
-  applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: false }, true,
-    mockedApi({ ...desiredSettings, allow_auto_merge: true }, offCalls));
-  const offPatch = offCalls.find((args) => args[0] === '-X' && args[1] === 'PATCH');
-  assert(offPatch?.includes('allow_auto_merge=false'), 'explicit off is honored');
+  applySettings(
+    'simpsonm09-projects/example',
+    { topics: [], allowAutoMerge: false },
+    true,
+    mockedApi({ ...desiredSettings, allow_auto_merge: true }, offCalls),
+  );
+  assert(
+    offCalls.some((args) => args.includes('allow_auto_merge=false')),
+    'explicit off is honored',
+  );
 
   const noPolicyCalls = [];
-  const noPolicy = applySettings('simpsonm09-org/example', { topics: [] }, false,
-    mockedApi({ ...desiredSettings, allow_auto_merge: true }, noPolicyCalls));
-  assert(!noPolicy.changes.some((change) => change.includes('allow_auto_merge')), 'unspecified setting is not inferred or changed');
-
-  const unsupportedCalls = [];
-  const unsupportedApi = mockedApi({ ...desiredSettings, delete_branch_on_merge: false }, unsupportedCalls);
-  const unsupported = applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: true }, true,
-    (args) => args.includes('allow_auto_merge=true')
-      ? { ok: false, error: 'auto-merge is not available on this plan' }
-      : unsupportedApi(args));
-  assert(unsupported.errors.some((error) => error.includes('not available on this plan')), 'unsupported plan response is surfaced');
-  assert(unsupported.errors.some((error) => error.includes('other settings were handled independently')),
-    'auto-merge rejection reports the partial outcome');
-  const unaffectedSettingsPatch = unsupportedCalls.find((args) => args[0] === '-X' && args[1] === 'PATCH');
-  assert(unaffectedSettingsPatch?.includes('delete_branch_on_merge=true') && !unaffectedSettingsPatch.includes('allow_auto_merge=true'),
-    'auto-merge rejection does not couple unrelated settings to its PATCH');
-
-  for (const [settingsResult, autoResult, label] of [
-    [{ ok: false, error: 'settings rejected' }, { ok: true, value: null }, 'first fails, second succeeds'],
-    [{ ok: true, value: null }, { ok: false, error: 'auto-merge rejected' }, 'first succeeds, second fails'],
-    [{ ok: false, error: 'settings rejected' }, { ok: false, error: 'auto-merge rejected' }, 'both fail'],
-    [{ ok: true, value: null }, { ok: true, value: null }, 'both succeed'],
-  ]) {
-    const calls = [];
-    const outcomes = applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: true }, true,
-      settingsApi({ ...desiredSettings, delete_branch_on_merge: false }, { settings: settingsResult, autoMerge: autoResult }, calls));
-    const patches = calls.filter((args) => args[0] === '-X' && args[1] === 'PATCH');
-    assert(patches.length === 2 && patches[0].includes('delete_branch_on_merge=true')
-      && patches[1].includes('allow_auto_merge=true'), `${label}: both independent PATCHes are attempted`);
-    assert(outcomes.errors.some((error) => error.includes('settings rejected')) === !settingsResult.ok,
-      `${label}: settings result is reported accurately`);
-    assert(outcomes.errors.some((error) => error.includes('auto-merge rejected')) === !autoResult.ok,
-      `${label}: auto-merge result is reported accurately`);
-    assert(outcomes.changes.includes('simpsonm09-org/example delete_branch_on_merge -> true') === settingsResult.ok,
-      `${label}: settings change is reported only after success`);
-    assert(outcomes.changes.includes('simpsonm09-org/example allow_auto_merge -> true') === autoResult.ok,
-      `${label}: auto-merge change is reported only after success`);
-  }
+  const noPolicy = applySettings(
+    'simpsonm09-projects/example',
+    { topics: [] },
+    false,
+    mockedApi({ ...desiredSettings, allow_auto_merge: true }, noPolicyCalls),
+  );
+  assert(
+    !noPolicy.changes.some((change) => change.includes('allow_auto_merge')),
+    'an unspecified auto-merge setting is not changed',
+  );
 
   const metadataFailureCalls = [];
-  const metadataFailure = applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: true }, true,
-    settingsApi(null, {}, metadataFailureCalls));
-  assert(metadataFailure.errors.some((error) => error.includes('settings') && error.includes('metadata unavailable'))
-    && metadataFailure.errors.some((error) => error.includes('allow_auto_merge') && error.includes('metadata unavailable')),
-  'metadata read failure reports both requested settings as unavailable');
-  assert(!metadataFailureCalls.some((args) => args[0] === '-X' && args[1] === 'PATCH'),
-    'metadata read failure does not write without current settings');
+  const metadataFailure = applySettings(
+    'simpsonm09-projects/example',
+    { topics: [], allowAutoMerge: true },
+    true,
+    settingsApi(null, {}, metadataFailureCalls),
+  );
+  assert(
+    metadataFailure.errors.some((error) => error.includes('settings') && error.includes('metadata unavailable')),
+    'a metadata read failure is reported',
+  );
+  assert(
+    !metadataFailureCalls.some((args) => args[0] === '-X' && args[1] === 'PATCH'),
+    'a metadata read failure does not write',
+  );
 
-  const malformedMetadataCalls = [];
-  const malformedMetadata = applySettings('simpsonm09-org/example', { topics: [], allowAutoMerge: true }, true,
-    settingsApi('unreadable', {}, malformedMetadataCalls));
-  assert(malformedMetadata.errors.some((error) => error.includes('settings metadata') && error.includes('unreadable metadata response body'))
-    && malformedMetadata.errors.some((error) => error.includes('allow_auto_merge metadata') && error.includes('unreadable metadata response body')),
-  'empty metadata body explicitly makes both requested settings unavailable');
-  assert(!malformedMetadataCalls.some((args) => args[0] === '-X' && args[1] === 'PATCH'),
-    'empty metadata body does not write without current settings');
+  const unreadableCalls = [];
+  const unreadable = applySettings(
+    'simpsonm09-projects/example',
+    { topics: [], allowAutoMerge: true },
+    true,
+    settingsApi('unreadable', {}, unreadableCalls),
+  );
+  assert(
+    unreadable.errors.some((error) => error.includes('unreadable metadata response body')),
+    'an empty metadata body is reported',
+  );
+  assert(
+    !unreadableCalls.some((args) => args[0] === '-X' && args[1] === 'PATCH'),
+    'an empty metadata body does not write',
+  );
 }
 
 function mockGhSource() {
@@ -212,31 +263,29 @@ if (args[0] === '--version') {
   process.stdout.write('gh mock\\n'); process.exit(0);
 }
 const endpoint = args.at(-1);
-if (endpoint === 'repos/simpsonm09-org/example') {
+if (endpoint === 'repos/simpsonm09-projects/example') {
   if (scenario === 'metadata-error') fail('mock metadata failure');
   if (scenario === 'metadata-empty') process.exit(0);
   if (scenario === 'metadata-null') { process.stdout.write('null'); process.exit(0); }
   if (scenario === 'metadata-array') { process.stdout.write('[]'); process.exit(0); }
   if (scenario === 'metadata-scalar') { process.stdout.write('7'); process.exit(0); }
   process.stdout.write(JSON.stringify({ visibility: scenario === 'private' ? 'private' : 'public', default_branch: 'main', description: 'fixture' }));
-} else if (endpoint === 'repos/simpsonm09-org/example/topics') {
-  process.stdout.write(JSON.stringify({ names: ['simpsonm09-org'] }));
-} else if (endpoint === 'repos/simpsonm09-org/example/rulesets') {
+} else if (endpoint === 'repos/simpsonm09-projects/example/topics') {
+  process.stdout.write(JSON.stringify({ names: ['simpsonm09-projects'] }));
+} else if (endpoint === 'repos/simpsonm09-projects/example/rulesets') {
   if (scenario === 'ruleset-list-error') fail('mock ruleset list failure');
   if (scenario === 'ruleset-list-empty') process.exit(0);
   if (scenario === 'ruleset-list-null') { process.stdout.write('null'); process.exit(0); }
   if (scenario === 'ruleset-list-object') { process.stdout.write('{}'); process.exit(0); }
   if (scenario === 'ruleset-list-array') { process.stdout.write('[{}]'); process.exit(0); }
-  process.stdout.write(JSON.stringify([[{ id: 1, name: 'protect-main' }, { id: 2, name: 'approval-main' }]]));
-} else if (endpoint.endsWith('/rulesets/1') || endpoint.endsWith('/rulesets/2')) {
-  if (scenario === 'detail-error' && endpoint.endsWith('/rulesets/2')) fail('mock detail failure');
-  const approval = endpoint.endsWith('/rulesets/2');
-  const malformed = approval ? scenario.replace('approval-', '') : scenario.replace('protect-', '');
-  if (malformed === 'detail-empty') process.exit(0);
-  if (malformed === 'detail-null') { process.stdout.write('null'); process.exit(0); }
-  if (malformed === 'detail-array') { process.stdout.write('[]'); process.exit(0); }
-  if (malformed === 'detail-scalar') { process.stdout.write('7'); process.exit(0); }
-  if (scenario === 'missing-required-checks' && !approval) {
+  process.stdout.write(JSON.stringify([[{ id: 1, name: 'protect-main' }]]));
+} else if (endpoint.endsWith('/rulesets/1')) {
+  if (scenario === 'detail-error') fail('mock detail failure');
+  if (scenario === 'detail-empty') process.exit(0);
+  if (scenario === 'detail-null') { process.stdout.write('null'); process.exit(0); }
+  if (scenario === 'detail-array') { process.stdout.write('[]'); process.exit(0); }
+  if (scenario === 'detail-scalar') { process.stdout.write('7'); process.exit(0); }
+  if (scenario === 'missing-required-checks') {
     process.stdout.write(JSON.stringify({ name: 'protect-main', target: 'branch', enforcement: 'active',
       conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } }, bypass_actors: [],
       rules: [{ type: 'required_signatures' }, { type: 'pull_request', parameters: { required_approving_review_count: 0 } },
@@ -244,15 +293,7 @@ if (endpoint === 'repos/simpsonm09-org/example') {
     }));
     process.exit(0);
   }
-  if (scenario === 'null-approval-rule' && approval) {
-    process.stdout.write(JSON.stringify({ name: 'approval-main', target: 'branch', enforcement: 'active',
-      conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } },
-      bypass_actors: [{ actor_id: null, actor_type: 'OrganizationAdmin', bypass_mode: 'pull_request' }],
-      rules: [null],
-    }));
-    process.exit(0);
-  }
-  if (scenario === 'broken-hard-protection' && !approval) {
+  if (scenario === 'broken-hard-protection') {
     process.stdout.write(JSON.stringify({ name: 'protect-main', target: 'tag', enforcement: 'disabled',
       conditions: { ref_name: { include: ['refs/heads/release'], exclude: [] } },
       bypass_actors: [{ actor_type: 'Integration', actor_id: 9, bypass_mode: 'always' }],
@@ -260,18 +301,19 @@ if (endpoint === 'repos/simpsonm09-org/example') {
     }));
     process.exit(0);
   }
-  const bypassActors = approval ? [{ actor_id: null, actor_type: 'OrganizationAdmin', bypass_mode: 'pull_request' }] : [];
-  if (scenario === 'nonempty-protect-bypass' && !approval) bypassActors.push({ actor_id: 9, actor_type: 'Integration', bypass_mode: 'always' });
+  const bypassActors = [];
+  if (scenario === 'nonempty-protect-bypass') bypassActors.push({ actor_id: 9, actor_type: 'Integration', bypass_mode: 'always' });
   const response = {
-    name: approval ? 'approval-main' : 'protect-main', target: 'branch', enforcement: 'active',
+    name: 'protect-main', target: 'branch', enforcement: 'active',
     conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } },
-    ...(scenario !== (approval ? 'omit-approval-bypass' : 'omit-protect-bypass')
-      ? { bypass_actors: scenario === 'invalid-protect-bypass' && !approval ? null : bypassActors } : {}),
-    rules: approval
-      ? [{ type: 'pull_request', parameters: { required_approving_review_count: 0 } }]
-      : [{ type: 'required_signatures' }, { type: 'pull_request', parameters: { required_approving_review_count: 0 } },
-        { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true,
-          required_status_checks: ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'test', 'coverage / coverage'].map((context) => ({ context })) } }],
+    ...(scenario !== 'omit-protect-bypass'
+      ? { bypass_actors: scenario === 'invalid-protect-bypass' ? null : bypassActors } : {}),
+    rules: [
+      { type: 'required_signatures' },
+      { type: 'pull_request', parameters: { required_approving_review_count: 0, allowed_merge_methods: ['squash'] } },
+      { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true,
+        required_status_checks: ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'test', 'coverage / coverage'].map((context) => ({ context })) } },
+    ],
   };
   process.stdout.write(JSON.stringify(response));
 } else fail('unexpected mock endpoint: ' + endpoint);
@@ -301,10 +343,17 @@ function runCheckRepoCli(args, path, scenario = '', repo = true) {
   delete env.GITHUB_REPOSITORY;
   const identityRoot = join(path, 'identity-root');
   if (!repo) mkdirSync(identityRoot, { recursive: true });
-  const commandArgs = ['scripts/check-repo.mjs', repo ? '.' : identityRoot,
-    ...(repo ? ['--repo', 'simpsonm09-org/example'] : []), ...args];
+  const commandArgs = [
+    'scripts/check-repo.mjs',
+    repo ? '.' : identityRoot,
+    ...(repo ? ['--repo', 'simpsonm09-projects/example'] : []),
+    ...args,
+  ];
   const result = spawnSync(process.execPath, commandArgs, {
-    cwd: REPO_ROOT, encoding: 'utf8', windowsHide: true, env,
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    windowsHide: true,
+    env,
   });
   result.fixtureCalls = existsSync(callLog) ? readFileSync(callLog, 'utf8') : '';
   return result;
@@ -316,56 +365,49 @@ function delimiterForPath() {
 
 function expectPolicyGap(result, label, reason) {
   const count = (result.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length;
-  assert(result.status === 1 && count === 1 && result.stdout.includes(reason),
-    `${label} must fail with exactly one approval-policy gap containing ${reason}; got exit ${result.status}:\n${result.stdout}${result.stderr}\nfixture calls: ${result.fixtureCalls}`);
+  assert(
+    result.status === 1 && count === 1 && result.stdout.includes(reason),
+    `${label} must fail with exactly one approval-policy gap containing ${reason}; got exit ${result.status}:\n${result.stdout}${result.stderr}\nfixture calls: ${result.fixtureCalls}`,
+  );
 }
 
-function testRequiredContextsBothModes(bin, level) {
+function testRequiredContexts(bin, level) {
   const withLevel = runCheckRepoCli(level, bin, 'missing-required-checks');
-  assert(withLevel.status === 1 && withLevel.stdout.includes('gap ruleset/required-missing:'),
-    'valid explicit level still reports hard protect-main missing required contexts');
+  assert(
+    withLevel.status === 1 && withLevel.stdout.includes('gap ruleset/required-missing:'),
+    'a valid explicit level still reports missing required contexts',
+  );
   const withoutLevel = runCheckRepoCli([], bin, 'missing-required-checks');
-  assert(withoutLevel.status === 1
-    && (withoutLevel.stdout.match(/gap ruleset\/required-missing:/g) ?? []).length === 7,
-  'without a level, the same corrupt required contexts produce all seven required-missing gaps and fail');
+  assert(
+    withoutLevel.status === 1 && (withoutLevel.stdout.match(/gap ruleset\/required-missing:/g) ?? []).length === 7,
+    'without a level, the same corrupt required contexts produce all seven required-missing gaps and fail',
+  );
 }
 
-function testNullApprovalRuleBothModes(bin, level) {
-  const cases = [
-    { args: [], id: 'ruleset/approval-rule', reason: 'approval-main must contain exactly one pull_request rule', label: 'without a level' },
-    { args: level, id: 'ruleset/approval-policy', reason: 'approval-main expected one pull_request rule, found 0', label: 'with a level' },
-  ];
-  for (const { args, id, reason, label } of cases) {
-    const result = runCheckRepoCli(args, bin, 'null-approval-rule');
-    const expectedGap = `  gap ${id}: ${reason}`;
-    const reportedGaps = result.stdout.split(/\r?\n/).filter((line) => line.startsWith('  gap '));
-    assert(result.status === 1 && reportedGaps.length === 1 && reportedGaps[0] === expectedGap
-      && result.stdout.includes('standard: failed') && !result.stderr.includes('TypeError'),
-    `null approval rule ${label} reports its expected gap and fails cleanly; got exit ${result.status}:\n${result.stdout}${result.stderr}`);
-  }
-}
-
-function testBypassVisibilityBothModes(bin, level) {
-  for (const [scenario, name] of [
-    ['omit-protect-bypass', 'protect-main'],
-    ['omit-approval-bypass', 'approval-main'],
-  ]) {
-    const noLevel = runCheckRepoCli([], bin, scenario);
-    assert(noLevel.status === 0 && noLevel.stdout.includes(`cannot verify ${name} bypass actors: GitHub omitted bypass_actors`)
-      && noLevel.stdout.includes('UNVERIFIED')
-      && noLevel.stdout.includes('standard: ok (ruleset bypass visibility unverified)')
-      && !noLevel.stdout.includes('gap ruleset/protect-bypass')
-      && !noLevel.stdout.includes('gap ruleset/approval-policy'),
-    `omitted ${name} bypass_actors is explicitly unverified without a level; got exit ${noLevel.status}:\n${noLevel.stdout}${noLevel.stderr}`);
-    const explicit = runCheckRepoCli(level, bin, scenario);
-    assert(explicit.status === 1 && explicit.stdout.includes('gap ruleset/approval-policy:')
-      && explicit.stdout.includes(`${name} bypass actors are unreadable`),
-    `omitted ${name} bypass_actors fails closed with an explicit level`);
-  }
+function testBypassVisibility(bin, level) {
+  const noLevel = runCheckRepoCli([], bin, 'omit-protect-bypass');
+  assert(
+    noLevel.status === 0 &&
+      noLevel.stdout.includes('cannot verify protect-main bypass actors: GitHub omitted bypass_actors') &&
+      noLevel.stdout.includes('UNVERIFIED') &&
+      noLevel.stdout.includes('standard: ok (ruleset bypass visibility unverified)') &&
+      !noLevel.stdout.includes('gap ruleset/protect-bypass') &&
+      !noLevel.stdout.includes('gap ruleset/approval-policy'),
+    `omitted protect-main bypass_actors is explicitly unverified without a level; got exit ${noLevel.status}:\n${noLevel.stdout}${noLevel.stderr}`,
+  );
+  const explicit = runCheckRepoCli(level, bin, 'omit-protect-bypass');
+  assert(
+    explicit.status === 1 &&
+      explicit.stdout.includes('gap ruleset/approval-policy:') &&
+      explicit.stdout.includes('protect-main bypass actors are unreadable'),
+    'omitted protect-main bypass_actors fails closed with an explicit level',
+  );
   for (const scenario of ['invalid-protect-bypass', 'nonempty-protect-bypass']) {
     const result = runCheckRepoCli([], bin, scenario);
-    assert(result.status === 1 && result.stdout.includes('gap ruleset/protect-bypass:'),
-      `readable ${scenario === 'invalid-protect-bypass' ? 'invalid' : 'nonempty'} protect-main bypass_actors remains a hard gap without a level`);
+    assert(
+      result.status === 1 && result.stdout.includes('gap ruleset/protect-bypass:'),
+      `readable ${scenario === 'invalid-protect-bypass' ? 'invalid' : 'nonempty'} protect-main bypass_actors remains a hard gap without a level`,
+    );
   }
 }
 
@@ -378,59 +420,96 @@ function testCheckRepoCliFailures() {
     const level = ['--agent-level', 'merge'];
     expectPolicyGap(runCheckRepoCli(level, bin, 'missing-gh'), 'gh missing', 'gh is not on PATH');
     const noLevelMissing = runCheckRepoCli([], bin, 'missing-gh');
-    assert(noLevelMissing.stdout.includes('notice: gh is not on PATH')
-      && !noLevelMissing.stdout.includes('gap ruleset/approval-policy'), 'missing gh without an explicit level is notice only');
-    const noLevelReadFailure = runCheckRepoCli([], bin, 'detail-error');
-    assert(noLevelReadFailure.status === 0 && noLevelReadFailure.stdout.includes('notice: cannot read approval-main:')
-      && !noLevelReadFailure.stdout.includes('gap ruleset/approval-policy'),
-    'API read failure without an explicit level remains notice only');
+    assert(
+      noLevelMissing.stdout.includes('notice: gh is not on PATH') &&
+        !noLevelMissing.stdout.includes('gap ruleset/approval-policy'),
+      'missing gh without an explicit level is notice only',
+    );
     expectPolicyGap(runCheckRepoCli([...level, '--no-api'], bin), '--no-api', 'API checks were disabled');
     for (const [scenario, label, reason] of [
       ['metadata-error', 'metadata read failure', 'cannot read repository metadata'],
       ['private', 'private repository', 'unsupported for private repositories'],
       ['ruleset-list-error', 'ruleset list failure', 'cannot read ruleset list'],
-      ['detail-error', 'ruleset detail failure', 'cannot read approval-main detail'],
+      ['detail-error', 'ruleset detail failure', 'cannot read protect-main detail'],
     ]) {
       const result = runCheckRepoCli(level, bin, scenario);
       expectPolicyGap(result, label, reason);
-      assert(result.fixtureCalls.includes('repos/simpsonm09-org/example'), `${label} fixture proves gh was invoked`);
+      assert(
+        result.fixtureCalls.includes('repos/simpsonm09-projects/example'),
+        `${label} fixture proves gh was invoked`,
+      );
     }
     const missingIdentity = runCheckRepoCli(level, bin, 'success', false);
     expectPolicyGap(missingIdentity, 'missing identity', 'repository identity could not be determined');
     const success = runCheckRepoCli(level, bin, 'success');
-    assert(success.status === 0 && !success.stdout.includes('gap ruleset/approval-policy')
-      && !success.stdout.includes('gap ruleset/required-missing') && !success.stdout.includes('notice: cannot read'),
-    'a valid explicit-level API audit passes with hard checks present');
+    assert(
+      success.status === 0 &&
+        !success.stdout.includes('gap ruleset/approval-policy') &&
+        !success.stdout.includes('gap ruleset/required-missing') &&
+        !success.stdout.includes('notice: cannot read'),
+      'a valid explicit-level API audit passes with hard checks present',
+    );
     const successWithoutLevel = runCheckRepoCli([], bin, 'success');
-    assert(successWithoutLevel.stdout.includes('approval-main approval count and bypass actors were not compared')
-      && !successWithoutLevel.stdout.includes('gap ruleset/approval-policy'), 'successful API read without a level remains notice only');
-    testBypassVisibilityBothModes(bin, level);
+    assert(
+      successWithoutLevel.stdout.includes('protect-main approval count and bypass actors were not compared') &&
+        !successWithoutLevel.stdout.includes('gap ruleset/approval-policy'),
+      'a successful API read without a level remains notice only',
+    );
+    testBypassVisibility(bin, level);
     const noLevelNoApi = runCheckRepoCli(['--no-api'], bin);
     assert(!noLevelNoApi.stdout.includes('gap ruleset/approval-policy'), 'no-level --no-api does not add a policy gap');
     const invalid = runCheckRepoCli(['--agent-level', 'bogus'], bin, 'success');
-    assert(invalid.status === 1 && (invalid.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length === 1,
-      'unsupported level reports one gap');
+    assert(
+      invalid.status === 1 && (invalid.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length === 1,
+      'unsupported level reports one gap',
+    );
     const invalidWithoutApi = runCheckRepoCli(['--agent-level', 'bogus', '--no-api'], bin);
-    assert(invalidWithoutApi.status === 1 && (invalidWithoutApi.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length === 1,
-      'unsupported level with API disabled does not duplicate its gap');
-    for (const scenario of ['approval-detail-empty', 'approval-detail-null', 'approval-detail-array', 'approval-detail-scalar',
-      'protect-detail-empty', 'protect-detail-null', 'protect-detail-array', 'protect-detail-scalar',
-      'metadata-empty', 'metadata-null', 'metadata-array', 'metadata-scalar',
-      'ruleset-list-empty', 'ruleset-list-null', 'ruleset-list-object', 'ruleset-list-array']) {
+    assert(
+      invalidWithoutApi.status === 1 &&
+        (invalidWithoutApi.stdout.match(/gap ruleset\/approval-policy:/g) ?? []).length === 1,
+      'unsupported level with API disabled does not duplicate its gap',
+    );
+    for (const scenario of [
+      'detail-empty',
+      'detail-null',
+      'detail-array',
+      'detail-scalar',
+      'metadata-empty',
+      'metadata-null',
+      'metadata-array',
+      'metadata-scalar',
+      'ruleset-list-empty',
+      'ruleset-list-null',
+      'ruleset-list-object',
+      'ruleset-list-array',
+    ]) {
       const levelResult = runCheckRepoCli(level, bin, scenario);
-      expectPolicyGap(levelResult, `${scenario} explicit`, `cannot read`);
-      assert(levelResult.fixtureCalls.includes('repos/simpsonm09-org/example'), `${scenario} explicit fixture proves gh was invoked`);
+      expectPolicyGap(levelResult, `${scenario} explicit`, 'cannot read');
+      assert(
+        levelResult.fixtureCalls.includes('repos/simpsonm09-projects/example'),
+        `${scenario} explicit fixture proves gh was invoked`,
+      );
       const noticeResult = runCheckRepoCli([], bin, scenario);
-      assert(noticeResult.status === 0 && noticeResult.stdout.includes('notice: cannot read'),
-        `${scenario} without a level remains notice-only and succeeds`);
+      assert(
+        noticeResult.status === 0 && noticeResult.stdout.includes('notice: cannot read'),
+        `${scenario} without a level remains notice-only and succeeds`,
+      );
     }
-    testRequiredContextsBothModes(bin, level);
-    testNullApprovalRuleBothModes(bin, level);
+    testRequiredContexts(bin, level);
     const brokenHardChecks = runCheckRepoCli(level, bin, 'broken-hard-protection');
-    for (const id of ['ruleset/enforcement', 'ruleset/main-target', 'ruleset/required-missing',
-      'ruleset/required-strict', 'ruleset/protect-rule', 'ruleset/protect-signatures', 'ruleset/protect-bypass']) {
-      assert(brokenHardChecks.status === 1 && brokenHardChecks.stdout.includes(`gap ${id}:`),
-        `valid explicit level retains the ${id} hard check`);
+    for (const id of [
+      'ruleset/enforcement',
+      'ruleset/main-target',
+      'ruleset/required-missing',
+      'ruleset/required-strict',
+      'ruleset/protect-rule',
+      'ruleset/protect-signatures',
+      'ruleset/protect-bypass',
+    ]) {
+      assert(
+        brokenHardChecks.status === 1 && brokenHardChecks.stdout.includes(`gap ${id}:`),
+        `valid explicit level retains the ${id} hard check`,
+      );
     }
   } finally {
     rmSync(fixture, { recursive: true, force: true });

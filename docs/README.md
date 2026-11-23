@@ -14,7 +14,7 @@ Start here, then read the guide that matches the task.
 - [Documentation layout](documentation.md) defines the layout the checker reads.
 - [Local runs](local-runs.md) shows how to run the same checks as CI before pushing.
 - [Task runner](task-runner.md) explains the `justfile` convention and the recipe set.
-- [Validation](validation.md) documents the fleet conformance checker and the exception file.
+- [Validation](validation.md) documents the fleet conformance checker and the [exception file](exceptions.md).
 - [Testing](testing.md) covers the test job each repository adds.
 
 ## Reference

@@ -8,8 +8,3 @@ import "ops.generated.just"
 # List the recipes.
 default:
     @just --list
-
-# Run the Biome complexity gate over the repository.
-complexity:
-    mise exec -- biome lint .
-

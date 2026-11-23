@@ -15,8 +15,8 @@ The core set every repository provides:
 | --- | --- |
 | `just` | Lists the recipes. |
 | `just install` | Installs the pinned tools with `mise install`. |
-| `just fmt` | Formats with `bun fmt`. |
-| `just fmt-check` | Checks formatting with `bun fmt --check`. |
+| `just fmt` | Formats JavaScript and TypeScript with `bun fmt`. |
+| `just fmt-check` | Checks JavaScript and TypeScript formatting with `bun fmt --check`. |
 | `just lint` | Runs `bun lint` (oxlint) and flint for non-JavaScript files. |
 | `just typecheck` | Runs `bun check` where the repository has TypeScript. |
 | `just test` | Runs the suite. |

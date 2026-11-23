@@ -7,13 +7,33 @@ op := "node scripts/op.mjs"
 install:
     {{op}} run install
 
-# Run flint over every tracked file.
+# Format JavaScript and TypeScript with Bun.
+fmt:
+    {{op}} run fmt
+
+# Check JavaScript and TypeScript formatting with Bun.
+fmt-check:
+    {{op}} run fmt-check
+
+# Run oxlint over JavaScript and flint over the other languages.
 lint:
     {{op}} run lint
 
-# Fix what flint can fix.
+# Fix what oxlint and flint can fix.
 lint-fix:
     {{op}} run lint-fix
+
+# Type check JavaScript and TypeScript with Bun.
+typecheck:
+    {{op}} run typecheck
+
+# Install the guarded git hooks.
+hooks:
+    {{op}} run hooks
+
+# Check the .agents/skills tree and its .claude/skills links.
+agent-files:
+    {{op}} run agent-files
 
 # Run the AI-slop gate.
 aislop:

@@ -29,8 +29,17 @@ function ignoredByLocalGitignore(root, rel) {
     });
     const [source, , pattern] = output.split('\0');
     const sourcePath = source?.split(':', 1)[0];
-    if (!sourcePath || isAbsolute(sourcePath) || !(sourcePath === '.gitignore' || sourcePath.endsWith('/.gitignore')) || pattern?.startsWith('!')) return false;
-    execFileSync('git', ['-C', root, 'ls-files', '--error-unmatch', '--', sourcePath], { windowsHide: true, stdio: 'ignore' });
+    if (
+      !sourcePath ||
+      isAbsolute(sourcePath) ||
+      !(sourcePath === '.gitignore' || sourcePath.endsWith('/.gitignore')) ||
+      pattern?.startsWith('!')
+    )
+      return false;
+    execFileSync('git', ['-C', root, 'ls-files', '--error-unmatch', '--', sourcePath], {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
     return true;
   } catch {
     return false;
@@ -84,7 +93,9 @@ export function checkEnv(root, add) {
       windowsHide: true,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
-    }).split('\0').filter(Boolean);
+    })
+      .split('\0')
+      .filter(Boolean);
   } catch {
     add('env/index', 'Git could not read the repository index');
     return;

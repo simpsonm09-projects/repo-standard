@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readlinkSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { extensionOf, justfileText, listFiles, normalize, readText, toPosix } from './tree.mjs';
 
@@ -94,7 +94,11 @@ function interpreterName(token) {
 // is not a command word, and a version suffix is dropped so `python3.12`
 // reads as `python`.
 function commandWord(line) {
-  const tokens = line.replace(/\{\{[\s\S]*?\}\}/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const tokens = line
+    .replace(/\{\{[\s\S]*?\}\}/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
   if (tokens.length === 0) return { token: null, viaMise: false };
   if (interpreterName(tokens[0]) !== 'mise') return { token: tokens[0], viaMise: false };
   if (tokens[1] === 'exec' && tokens[2] === '--') return { token: tokens[3] ?? null, viaMise: true };
@@ -108,26 +112,6 @@ function checkInterpreter(header, line, add) {
   const name = interpreterName(token);
   if (INTERPRETERS.has(name)) {
     add('scripting/interpreter', `recipe "${header}" names interpreter "${name}": ${line}`);
-  }
-}
-
-function quotedScriptPaths(line) {
-  const out = [];
-  for (const match of line.matchAll(/"([^"]*)"|'([^']*)'/g)) {
-    const text = match[1] ?? match[2] ?? '';
-    for (const path of text.matchAll(/[A-Za-z0-9_./\\-]+\.(?:ps1|sh|py|mjs)\b/g)) out.push(toPosix(path[0]));
-  }
-  return out;
-}
-
-function checkTwinExists(root, bodies, add) {
-  for (const { header, line } of bodies) {
-    if (!/\bos(?:_family)?\s*\(/.test(line)) continue;
-    for (const rel of quotedScriptPaths(line)) {
-      if (!existsSync(join(root, rel))) {
-        add('scripting/twin-exists', `recipe "${header}" routes to missing script ${rel}`);
-      }
-    }
   }
 }
 
@@ -197,19 +181,31 @@ function checkScriptsDeclared(root, text, add) {
   for (const file of listFiles(join(root, 'scripts'), DECLARED_SCRIPT_EXTENSIONS)) {
     const rel = toPosix(relative(root, file));
     const declared = declaredPlatform(file);
-    if (referenced.has(rel) || referencedInText(text, rel) || (declared !== null && platformsOf(file).includes(declared))) continue;
-    add('scripting/script-declared', `${rel} is not referenced by an op or recipe and declares no matching "# platforms:" line`);
+    if (
+      referenced.has(rel) ||
+      referencedInText(text, rel) ||
+      (declared !== null && platformsOf(file).includes(declared))
+    )
+      continue;
+    add(
+      'scripting/script-declared',
+      `${rel} is not referenced by an op or recipe and declares no matching "# platforms:" line`,
+    );
   }
 }
 
-// Repo-local skills live in .claude/skills/<id>/SKILL.md, which Claude Code and
-// OpenCode both read. .opencode/skills/ is the old location and stays scanned
-// until its repository moves.
-const REPO_SKILL_DIRS = [['.claude', 'skills'], ['.opencode', 'skills']];
+// Repo-local skills live in .agents/skills/<id>/SKILL.md, which Codex, OpenCode,
+// Pi, Cursor and the other harnesses read. Claude Code reads only
+// .claude/skills/, so every canonical skill needs a relative symlink there.
+// .opencode/skills/ is the old location and stays scanned until its repository
+// moves.
+const CANONICAL_SKILL_DIR = ['.agents', 'skills'];
+const CLAUDE_SKILL_DIR = ['.claude', 'skills'];
+const LEGACY_SKILL_DIR = ['.opencode', 'skills'];
 
 function skillFiles(root) {
   const out = listFiles(join(root, 'skills'), ['.md']).filter((file) => basename(file) === 'SKILL.md');
-  for (const parts of REPO_SKILL_DIRS) {
+  for (const parts of [CANONICAL_SKILL_DIR, LEGACY_SKILL_DIR]) {
     for (const file of listFiles(join(root, ...parts), ['.md'])) {
       if (basename(file) === 'SKILL.md') out.push(file);
     }
@@ -217,20 +213,44 @@ function skillFiles(root) {
   return out;
 }
 
-function repoSkillIds(dir) {
-  return listFiles(dir, ['.md'])
-    .filter((file) => basename(file) === 'SKILL.md')
-    .map((file) => toPosix(relative(dir, dirname(file))));
+function skillIds(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, 'SKILL.md')))
+    .map((entry) => entry.name)
+    .sort();
 }
 
-// OpenCode loads a skill from both roots, so one id in both loads twice. Claude
-// Code loads only .claude/skills/, so the two harnesses would see different skills.
-function checkSkillIds(root, add) {
-  const [claude, opencode] = REPO_SKILL_DIRS.map((parts) => repoSkillIds(join(root, ...parts)));
-  for (const id of claude) {
-    if (opencode.includes(id)) {
-      add('scripting/skill-duplicate', `skill ${id} is in both .claude/skills and .opencode/skills; keep it in .claude/skills only`);
+function claudeEntries(root) {
+  const dir = join(root, ...CLAUDE_SKILL_DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).sort();
+}
+
+function checkSkillLayout(root, add) {
+  const canonical = new Set(skillIds(join(root, ...CANONICAL_SKILL_DIR)));
+  const claudeDir = join(root, ...CLAUDE_SKILL_DIR);
+  for (const id of claudeEntries(root)) {
+    const full = join(claudeDir, id);
+    if (!lstatSync(full).isSymbolicLink()) {
+      add(
+        'scripting/skill-location',
+        `.claude/skills/${id} is not a symlink; keep the skill in .agents/skills/${id} and link it`,
+      );
+      continue;
     }
+    const target = readlinkSync(full).replace(/\\/g, '/');
+    if (target !== `../../.agents/skills/${id}` || !existsSync(full)) {
+      add('scripting/skill-set', `.claude/skills/${id} does not link to ../../.agents/skills/${id}`);
+    }
+  }
+  for (const id of canonical) {
+    if (!existsSync(join(claudeDir, id))) {
+      add('scripting/skill-link', `.agents/skills/${id} has no .claude/skills/${id} symlink`);
+    }
+  }
+  for (const id of skillIds(join(root, ...LEGACY_SKILL_DIR))) {
+    add('scripting/skill-location', `.opencode/skills/${id} is the old location; move it to .agents/skills/${id}`);
   }
 }
 
@@ -282,9 +302,8 @@ export function checkScripting(root, add) {
     checkShellOps(header, line, add);
     checkInterpreter(header, line, add);
   }
-  checkTwinExists(repoRoot, bodies, add);
   checkScriptsDeclared(repoRoot, text, add);
   checkSkillRecipes(repoRoot, add);
-  checkSkillIds(repoRoot, add);
+  checkSkillLayout(repoRoot, add);
   checkToolsRecipe(repoRoot, text, add);
 }

@@ -256,12 +256,16 @@ function reportThresholds(options, mode, totals, stdout) {
   let ok = true;
   if ((mode === 'lines' || mode === 'both') && totals.lineMeasured > 0) {
     const percent = (totals.lineCovered / totals.lineMeasured) * 100;
-    stdout.push(`patch-coverage: ${totals.lineCovered}/${totals.lineMeasured} changed lines covered (${percent.toFixed(1)}%), threshold ${options.threshold}%`);
+    stdout.push(
+      `patch-coverage: ${totals.lineCovered}/${totals.lineMeasured} changed lines covered (${percent.toFixed(1)}%), threshold ${options.threshold}%`,
+    );
     if (percent < options.threshold) ok = false;
   }
   if ((mode === 'branches' || mode === 'both') && totals.branchMeasured > 0) {
     const percent = (totals.branchCovered / totals.branchMeasured) * 100;
-    stdout.push(`patch-coverage: ${totals.branchCovered}/${totals.branchMeasured} changed branches covered (${percent.toFixed(1)}%), threshold ${options.branchThreshold}%`);
+    stdout.push(
+      `patch-coverage: ${totals.branchCovered}/${totals.branchMeasured} changed branches covered (${percent.toFixed(1)}%), threshold ${options.branchThreshold}%`,
+    );
     if (percent < options.branchThreshold) ok = false;
   }
   return ok;
@@ -285,7 +289,9 @@ function reportCrap(files, changed, hasBranches, hasFunctions, stdout) {
 function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
-    process.stdout.write('usage: node scripts/patch-coverage.mjs --lcov <path> --base <ref> [--mode lines|branches|both] [--threshold 80] [--branch-threshold 70] [--crap] [--allow-missing-branch]\n');
+    process.stdout.write(
+      'usage: node scripts/patch-coverage.mjs --lcov <path> --base <ref> [--mode lines|branches|both] [--threshold 80] [--branch-threshold 70] [--crap] [--allow-missing-branch]\n',
+    );
     process.exit(EXIT.OK);
   }
   if (!MODES.has(options.mode)) {

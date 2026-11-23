@@ -41,9 +41,7 @@ export function which(command, options = {}) {
   const platform = options.platform ?? process.platform;
   const env = options.env ?? process.env;
   const fs = options.fs ?? nativeFs;
-  const pathExts = platform === 'win32'
-    ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
-    : [''];
+  const pathExts = platform === 'win32' ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean) : [''];
   const path = platform === 'win32' ? win32 : posix;
   const extensions = path.extname(command) ? [''] : pathExts;
   for (const dir of (env.PATH ?? '').split(platform === 'win32' ? ';' : ':')) {

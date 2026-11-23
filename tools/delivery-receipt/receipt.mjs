@@ -3,7 +3,16 @@ import { collectReceiptSnapshot, readCommittedBlob } from './receipt-collector.m
 import { describeCommittedBlob, describeWorkingTree } from './receipt-codec.mjs';
 import { MAX_GIT_BUFFER_BYTES, sha256 } from './receipt-validation.mjs';
 
-export { buildDeliveryReceipt, collectReceiptSnapshot, createReceipt, describeCommittedBlob, describeWorkingTree, hashText, gitBufferLimit, readCommittedBlob };
+export {
+  buildDeliveryReceipt,
+  collectReceiptSnapshot,
+  createReceipt,
+  describeCommittedBlob,
+  describeWorkingTree,
+  hashText,
+  gitBufferLimit,
+  readCommittedBlob,
+};
 
 function createReceipt(input, root, options = {}) {
   return buildDeliveryReceipt(input, collectReceiptSnapshot(input, root, options));

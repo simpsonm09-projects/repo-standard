@@ -11,7 +11,20 @@ export function runSecretScan() {
   if (which('docker')) {
     const image = process.env.GITLEAKS_IMAGE ?? GITLEAKS_IMAGE;
     const mount = `${process.cwd()}:/repo`;
-    return run('docker', ['run', '--rm', '-v', mount, '-w', '/repo', image, 'detect', '--source=.', '--redact', '--exit-code', '1']);
+    return run('docker', [
+      'run',
+      '--rm',
+      '-v',
+      mount,
+      '-w',
+      '/repo',
+      image,
+      'detect',
+      '--source=.',
+      '--redact',
+      '--exit-code',
+      '1',
+    ]);
   }
   skip('gitleaks', 'install gitleaks or docker to scan git history');
   return EXIT.OK;

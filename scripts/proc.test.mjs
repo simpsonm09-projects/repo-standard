@@ -48,23 +48,66 @@ function testLookupResults(check) {
   });
   const posix = { platform: 'linux', env: { PATH: '/first:/second' }, fs };
   check(which('tool', posix), '/first/tool', 'the first matching PATH entry wins');
-  check(which('tool', { ...posix, env: { PATH: '' }, fs: fakeFileSystem({ tool: { file: true } }) }), null, 'an empty PATH entry is ignored');
-  check(which('tool.exe', { ...posix, env: { PATH: '/first:/second' } }), '/second/tool.exe', 'an explicit extension is used as written');
+  check(
+    which('tool', { ...posix, env: { PATH: '' }, fs: fakeFileSystem({ tool: { file: true } }) }),
+    null,
+    'an empty PATH entry is ignored',
+  );
+  check(
+    which('tool.exe', { ...posix, env: { PATH: '/first:/second' } }),
+    '/second/tool.exe',
+    'an explicit extension is used as written',
+  );
 }
 
 function testWindowsAliasDecisions(check) {
   const alias = 'C:\\Apps\\pwsh.exe';
   const windows = { platform: 'win32', env: { PATH: 'C:\\Apps', PATHEXT: '.exe' } };
-  check(which('pwsh.exe', { ...windows, fs: fakeFileSystem({ [alias]: { file: true } }) }), alias,
-    'an explicit Windows extension is searched as written');
-  check(which('pwsh', { ...windows, fs: fakeFileSystem({ [alias]: { statError: Object.assign(new Error('denied'), { code: 'EACCES' }), symlink: true, accessible: true } }) }), alias,
-    'an accessible Windows symlink alias is discoverable after stat EACCES');
-  check(which('pwsh', { ...windows, fs: fakeFileSystem({ [alias]: { statError: Object.assign(new Error('denied'), { code: 'EACCES' }), file: true, accessible: true } }) }), null,
-    'a Windows EACCES regular file is not accepted as an alias');
-  check(which('pwsh', { ...windows, fs: fakeFileSystem({ [alias]: { statError: Object.assign(new Error('denied'), { code: 'EACCES' }), symlink: true } }) }), null,
-    'an inaccessible Windows symlink alias is not discoverable');
-  check(which('pwsh', { ...windows, fs: fakeFileSystem({ [alias]: { statError: Object.assign(new Error('io'), { code: 'EIO' }), symlink: true, accessible: true } }) }), null,
-    'a non-EACCES stat error does not use alias fallback');
+  check(
+    which('pwsh.exe', { ...windows, fs: fakeFileSystem({ [alias]: { file: true } }) }),
+    alias,
+    'an explicit Windows extension is searched as written',
+  );
+  check(
+    which('pwsh', {
+      ...windows,
+      fs: fakeFileSystem({
+        [alias]: { statError: Object.assign(new Error('denied'), { code: 'EACCES' }), symlink: true, accessible: true },
+      }),
+    }),
+    alias,
+    'an accessible Windows symlink alias is discoverable after stat EACCES',
+  );
+  check(
+    which('pwsh', {
+      ...windows,
+      fs: fakeFileSystem({
+        [alias]: { statError: Object.assign(new Error('denied'), { code: 'EACCES' }), file: true, accessible: true },
+      }),
+    }),
+    null,
+    'a Windows EACCES regular file is not accepted as an alias',
+  );
+  check(
+    which('pwsh', {
+      ...windows,
+      fs: fakeFileSystem({
+        [alias]: { statError: Object.assign(new Error('denied'), { code: 'EACCES' }), symlink: true },
+      }),
+    }),
+    null,
+    'an inaccessible Windows symlink alias is not discoverable',
+  );
+  check(
+    which('pwsh', {
+      ...windows,
+      fs: fakeFileSystem({
+        [alias]: { statError: Object.assign(new Error('io'), { code: 'EIO' }), symlink: true, accessible: true },
+      }),
+    }),
+    null,
+    'a non-EACCES stat error does not use alias fallback',
+  );
 }
 
 function testPathCandidates(check, root) {

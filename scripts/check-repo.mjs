@@ -5,29 +5,42 @@ import { fileURLToPath } from 'node:url';
 import { EXIT } from './lib/exit.mjs';
 import { capture, isMain } from './lib/proc.mjs';
 import { checkStandard } from './check-standard.mjs';
-import { loadExceptions, findException } from './lib/exceptions.mjs';
+import { loadExceptions, loadRepoExceptions, findException } from './lib/exceptions.mjs';
 import { jobsCalling, parseJobs } from './lib/ci.mjs';
 import { normalize, readText } from './lib/tree.mjs';
 import { kindOf, rulesetGaps, uncoveredCallGaps } from './lib/required.mjs';
-import { compareMainRulesets, findUniqueRuleset, rulesetTargetErrors, SELECTABLE_LEVELS } from './lib/ruleset-policy.mjs';
+import { compareMainRulesets, findUniqueRuleset, SELECTABLE_LEVELS } from './lib/ruleset-policy.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STANDARD_ROOT = resolve(HERE, '..');
 const MAIN_BRANCH = 'main';
-const GROUPS = ['files', 'mise', 'ci', 'dependabot', 'community', 'docs', 'scripting', 'env', 'subprocess', 'settings', 'ruleset'];
+const GROUPS = [
+  'files',
+  'mise',
+  'ci',
+  'dependabot',
+  'community',
+  'docs',
+  'scripting',
+  'env',
+  'subprocess',
+  'settings',
+  'ruleset',
+];
 
 const USAGE = `usage: node scripts/check-repo.mjs [repo-path] [options]
 
 options:
   --repo OWNER/NAME     repository identity for the exception file and the API checks
-  --agent-level LEVEL   check level-specific approval-main policy (propose, merge, or full)
+  --agent-level LEVEL   compare the live protect-main ruleset with the level policy (propose, merge, or full)
   --no-api              run only the tree-local checks
   -h, --help            show this help
 
-Runs the single-repository standard check and applies docs/exceptions.json from
-this standard. A repository runs it from its own ci.yml with its own token, so no
-repository audits another. The API checks cover only what a repository can read
-about itself.
+Runs the single-repository standard check and applies the repository's own
+docs/exceptions.md, falling back to docs/exceptions.json from this standard for a
+repository that has no local file. A repository runs it from its own ci.yml with
+its own token, so no repository audits another. The API checks cover only what a
+repository can read about itself.
 `;
 
 function parseArgs(argv) {
@@ -36,9 +49,13 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === '-h' || arg === '--help') options.help = true;
     else if (arg === '--no-api') options.api = false;
-    else if (arg === '--repo') { options.repo = argv[index + 1]; index += 1; }
-    else if (arg === '--agent-level') { options.agentLevel = argv[index + 1] ?? ''; index += 1; }
-    else if (options.root === null) options.root = arg;
+    else if (arg === '--repo') {
+      options.repo = argv[index + 1];
+      index += 1;
+    } else if (arg === '--agent-level') {
+      options.agentLevel = argv[index + 1] ?? '';
+      index += 1;
+    } else if (options.root === null) options.root = arg;
   }
   return options;
 }
@@ -75,7 +92,8 @@ function checkApi(repo, add, notice, ci) {
   if (!meta.ok || !isJsonObject(meta.value)) {
     const error = meta.ok ? 'unreadable repository metadata response body' : meta.error;
     notice(`cannot read ${repo} settings: ${error}`);
-    if (ci.agentLevel !== undefined) addPolicyGap(add, `level not verified: cannot read repository metadata (${error})`);
+    if (ci.agentLevel !== undefined)
+      addPolicyGap(add, `level not verified: cannot read repository metadata (${error})`);
     return;
   }
   const value = meta.value;
@@ -85,10 +103,15 @@ function checkApi(repo, add, notice, ci) {
   const owner = repo.split('/')[0];
   const topics = ghJson(['api', `repos/${repo}/topics`]);
   if (!topics.ok) notice(`cannot read ${repo} topics: ${topics.error}`);
-  else if (!(topics.value?.names ?? []).includes(owner)) add('settings/topics', `topics do not include the owner "${owner}"`);
+  else if (!(topics.value?.names ?? []).includes(owner))
+    add('settings/topics', `topics do not include the owner "${owner}"`);
 
   if (value.visibility !== 'public') {
-    if (ci.agentLevel !== undefined) addPolicyGap(add, `level not verified: ruleset audit is unsupported for ${value.visibility ?? 'unknown'} repositories`);
+    if (ci.agentLevel !== undefined)
+      addPolicyGap(
+        add,
+        `level not verified: ruleset audit is unsupported for ${value.visibility ?? 'unknown'} repositories`,
+      );
     return;
   }
   checkPublicRuleset(repo, add, notice, ci, ci.agentLevel);
@@ -101,8 +124,7 @@ function readRulesetSummaries(repo, add, notice, agentLevel) {
     if (agentLevel !== undefined) addPolicyGap(add, `level not verified: cannot read ruleset list (${result.error})`);
     return null;
   }
-  if (!Array.isArray(result.value) || !result.value.every(Array.isArray)
-    || !result.value.flat().every(isJsonObject)) {
+  if (!Array.isArray(result.value) || !result.value.every(Array.isArray) || !result.value.flat().every(isJsonObject)) {
     const error = 'unreadable ruleset list response body';
     notice(`cannot read ${repo} rulesets: ${error}`);
     if (agentLevel !== undefined) addPolicyGap(add, `level not verified: cannot read ruleset list (${error})`);
@@ -111,16 +133,14 @@ function readRulesetSummaries(repo, add, notice, agentLevel) {
   const summaries = result.value.flat();
   const selected = {};
   const context = { selected, add, notice, agentLevel };
-  for (const name of ['protect-main', 'approval-main']) {
-    readOneRuleset(repo, summaries, name, context);
-  }
+  readOneRuleset(repo, summaries, 'protect-main', context);
   return selected;
 }
 
 function readOneRuleset(repo, summaries, name, { selected, add, notice, agentLevel }) {
   const match = findUniqueRuleset(summaries, name);
   if (!match.ok) {
-    add(name === 'protect-main' ? 'ruleset/protect-main' : 'ruleset/approval-main', match.reason);
+    add('ruleset/protect-main', match.reason);
     if (agentLevel !== undefined) addPolicyGap(add, `level not verified: ${match.reason}`);
     return;
   }
@@ -143,24 +163,21 @@ function checkPublicRuleset(repo, add, notice, ci, agentLevel) {
   const selected = readRulesetSummaries(repo, add, notice, agentLevel);
   if (!selected) return;
   const protect = selected['protect-main'];
-  const approval = selected['approval-main'];
   checkLegacyProtect(protect, ci, add);
   if (agentLevel !== undefined) {
-    if (SELECTABLE_LEVELS.includes(agentLevel) && protect && approval) checkLevelPolicy(agentLevel, protect, approval, add);
+    if (SELECTABLE_LEVELS.includes(agentLevel) && protect) checkLevelPolicy(agentLevel, protect, add);
     return;
   }
-  checkLegacyApproval(approval, add);
   if (protect && !Object.hasOwn(protect, 'bypass_actors')) {
     notice('cannot verify protect-main bypass actors: GitHub omitted bypass_actors for this read-only API request');
   }
-  if (approval && !Object.hasOwn(approval, 'bypass_actors')) {
-    notice('cannot verify approval-main bypass actors: GitHub omitted bypass_actors for this read-only API request');
-  }
-  notice('approval-main approval count and bypass actors were not compared; pass --agent-level to enable level-specific policy checks');
+  notice(
+    'protect-main approval count and bypass actors were not compared; pass --agent-level to enable level-specific policy checks',
+  );
 }
 
-function checkLevelPolicy(agentLevel, protect, approval, add) {
-  for (const error of compareMainRulesets(agentLevel, protect, approval, MAIN_BRANCH)) addPolicyGap(add, error);
+function checkLevelPolicy(agentLevel, protect, add) {
+  for (const error of compareMainRulesets(agentLevel, protect, MAIN_BRANCH)) addPolicyGap(add, error);
 }
 
 function checkLegacyProtect(protect, ci, add) {
@@ -168,9 +185,11 @@ function checkLegacyProtect(protect, ci, add) {
     for (const gap of rulesetGaps(protect, { ...ci, defaultBranch: MAIN_BRANCH })) add(gap.id, gap.message);
     const rules = Array.isArray(protect.rules) ? protect.rules : [];
     const pullRequests = rules.filter((entry) => entry?.type === 'pull_request');
-    if (pullRequests.length !== 1) add('ruleset/protect-rule', `protect-main has ${pullRequests.length} pull_request rules, expected exactly one`);
+    if (pullRequests.length !== 1)
+      add('ruleset/protect-rule', `protect-main has ${pullRequests.length} pull_request rules, expected exactly one`);
     const count = pullRequests[0]?.parameters?.required_approving_review_count;
-    if (count !== 0) add('ruleset/protect-approval', `protect-main approval count is ${count ?? 'unreadable'}, expected 0`);
+    if (count !== 0)
+      add('ruleset/protect-approval', `protect-main approval count is ${count ?? 'unreadable'}, expected 0`);
     if (rules.filter((entry) => entry?.type === 'required_signatures').length !== 1) {
       add('ruleset/protect-signatures', 'protect-main must contain exactly one required_signatures rule');
     }
@@ -179,19 +198,11 @@ function checkLegacyProtect(protect, ci, add) {
 }
 
 function checkLegacyProtectBypass(protect, add) {
-  if (Object.hasOwn(protect, 'bypass_actors')
-    && (!Array.isArray(protect.bypass_actors) || protect.bypass_actors.length !== 0)) {
+  if (
+    Object.hasOwn(protect, 'bypass_actors') &&
+    (!Array.isArray(protect.bypass_actors) || protect.bypass_actors.length !== 0)
+  ) {
     add('ruleset/protect-bypass', 'protect-main must have a readable empty bypass actor list');
-  }
-}
-
-function checkLegacyApproval(approval, add) {
-  if (approval && (!Array.isArray(approval.rules)
-    || (approval.rules ?? []).filter((entry) => entry?.type === 'pull_request').length !== 1)) {
-    add('ruleset/approval-rule', 'approval-main must contain exactly one pull_request rule');
-  }
-  if (approval) {
-    for (const error of rulesetTargetErrors(approval, 'approval-main', MAIN_BRANCH)) add('ruleset/approval-target', error);
   }
 }
 
@@ -220,7 +231,7 @@ function main() {
 
   const root = resolve(options.root ?? '.');
   const repo = options.repo ?? deriveRepo(root);
-  const exceptions = loadExceptionsOrExit();
+  const exceptions = loadExceptionsOrExit(root);
   const kind = kindOf(exceptions, repo);
   const jobs = readJobs(root);
   const result = checkStandard(root);
@@ -236,9 +247,11 @@ function main() {
   gaps.push(...uncoveredCallGaps(kind, callsCoverage));
 
   const auditLevel = SELECTABLE_LEVELS.includes(options.agentLevel) ? options.agentLevel : undefined;
-  if (auditLevel !== undefined && !options.api) addPolicyGap(addGap, 'level not verified: API checks were disabled with --no-api');
+  if (auditLevel !== undefined && !options.api)
+    addPolicyGap(addGap, 'level not verified: API checks were disabled with --no-api');
   else if (options.api && repo) runApiChecks(repo, gaps, notice, { kind, jobs, agentLevel: auditLevel });
-  else if (auditLevel !== undefined) addPolicyGap(addGap, 'level not verified: repository identity could not be determined');
+  else if (auditLevel !== undefined)
+    addPolicyGap(addGap, 'level not verified: repository identity could not be determined');
 
   const { open, excepted } = partitionGaps(gaps, repo, exceptions);
   report(root, repo, open, excepted, notices);
@@ -254,8 +267,10 @@ function runApiChecks(repo, gaps, notice, ci) {
   }
 }
 
-function loadExceptionsOrExit() {
+function loadExceptionsOrExit(root) {
   try {
+    const local = loadRepoExceptions(root);
+    if (local) return local;
     return loadExceptions(resolve(STANDARD_ROOT, 'docs/exceptions.json'));
   } catch (error) {
     process.stderr.write(`check-repo: cannot read the exception file: ${error.message}\n`);
@@ -275,10 +290,14 @@ function partitionGaps(gaps, repo, exceptions) {
 }
 
 function report(root, repo, open, excepted, notices) {
-  const bypassVisibilityUnverified = notices.some((message) => message.includes('cannot verify')
-    && message.includes('bypass actors'));
+  const bypassVisibilityUnverified = notices.some(
+    (message) => message.includes('cannot verify') && message.includes('bypass actors'),
+  );
   const header = ['repo'.padEnd(30), ...GROUPS.map((group) => group.padEnd(11))].join('');
-  const row = [(repo ?? root).padEnd(30), ...GROUPS.map((group) => statusFor(open, group, bypassVisibilityUnverified).padEnd(11))].join('');
+  const row = [
+    (repo ?? root).padEnd(30),
+    ...GROUPS.map((group) => statusFor(open, group, bypassVisibilityUnverified).padEnd(11)),
+  ].join('');
   process.stdout.write(`check-repo  ${root}\n`);
   process.stdout.write(`${header}\n${row}\n`);
   for (const gap of open) process.stdout.write(`  gap ${gap.id}: ${gap.message}\n`);

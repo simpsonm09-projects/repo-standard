@@ -8,7 +8,14 @@ import { checkScripting } from './lib/scripting.mjs';
 import { checkEnv } from './lib/env.mjs';
 import { checkSubprocess } from './lib/subprocess.mjs';
 import { checkDocs, hasCoverageRecipe } from './lib/docs.mjs';
-import { EXTERNAL_WORKFLOW, LOCAL_WORKFLOW, REPO_STANDARD_OWNERS, findUses, jobsCalling, parseJobs } from './lib/ci.mjs';
+import {
+  EXTERNAL_WORKFLOW,
+  LOCAL_WORKFLOW,
+  REPO_STANDARD_OWNERS,
+  findUses,
+  jobsCalling,
+  parseJobs,
+} from './lib/ci.mjs';
 import { ALL_CHECKS_REQUIRED, COVERAGE_MISSING_MESSAGE } from './lib/required.mjs';
 import { allChecksGaps, codeownersGaps } from './lib/all-checks.mjs';
 import { normalize, readText } from './lib/tree.mjs';
@@ -61,7 +68,8 @@ function groupOf(id) {
 }
 
 function checkFiles(root, add) {
-  for (const rel of REQUIRED_PATHS) {    const full = join(root, rel);
+  for (const rel of REQUIRED_PATHS) {
+    const full = join(root, rel);
     if (!existsSync(full)) {
       add(`files/${rel.replace(/\/$/, '')}`, `missing required path ${rel}`);
       continue;
@@ -99,7 +107,8 @@ function checkCi(root, add) {
   const jobs = parseJobs(text);
   const isSelf = root === STANDARD_ROOT;
 
-  for (const gap of allChecksGaps(jobs, { required: ALL_CHECKS_REQUIRED, workflowText: text })) add(gap.id, gap.message);
+  for (const gap of allChecksGaps(jobs, { required: ALL_CHECKS_REQUIRED, workflowText: text }))
+    add(gap.id, gap.message);
 
   for (const job of SHARED_JOBS) checkSharedJob(job, jobs, EXTERNAL_WORKFLOW, LOCAL_WORKFLOW, isSelf, add);
 

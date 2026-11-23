@@ -8,16 +8,46 @@
       "description": "Install the pinned tools with mise."
     },
     {
+      "id": "fmt",
+      "kind": "portable",
+      "run": "bun fmt scripts tools",
+      "description": "Format JavaScript and TypeScript with Bun."
+    },
+    {
+      "id": "fmt-check",
+      "kind": "portable",
+      "run": "bun fmt --check scripts tools",
+      "description": "Check JavaScript and TypeScript formatting with Bun."
+    },
+    {
       "id": "lint",
       "kind": "portable",
       "run": "node scripts/lint.mjs",
-      "description": "Run flint over every tracked file."
+      "description": "Run oxlint over JavaScript and flint over the other languages."
     },
     {
       "id": "lint-fix",
       "kind": "portable",
       "run": "node scripts/lint.mjs --fix",
-      "description": "Fix what flint can fix."
+      "description": "Fix what oxlint and flint can fix."
+    },
+    {
+      "id": "typecheck",
+      "kind": "portable",
+      "run": "bun check",
+      "description": "Type check JavaScript and TypeScript with Bun."
+    },
+    {
+      "id": "hooks",
+      "kind": "portable",
+      "run": "node scripts/hooks.mjs",
+      "description": "Install the guarded git hooks."
+    },
+    {
+      "id": "agent-files",
+      "kind": "portable",
+      "run": "node scripts/agent-files.mjs",
+      "description": "Check the .agents/skills tree and its .claude/skills links."
     },
     {
       "id": "aislop",

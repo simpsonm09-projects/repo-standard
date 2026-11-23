@@ -17,9 +17,9 @@ uses. See docs/github-settings.md.
 
 const SETTINGS = [
   ['delete_branch_on_merge', true],
-  ['allow_merge_commit', true],
+  ['allow_merge_commit', false],
   ['allow_squash_merge', true],
-  ['allow_rebase_merge', true],
+  ['allow_rebase_merge', false],
 ];
 
 const SECURITY = ['secret_scanning', 'secret_scanning_push_protection'];
@@ -29,8 +29,10 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--apply') options.apply = true;
-    else if (arg === '--topic') { options.topics.push(argv[index + 1]); index += 1; }
-    else if (arg === '--allow-auto-merge') index = parseAutoMerge(argv, index, options);
+    else if (arg === '--topic') {
+      options.topics.push(argv[index + 1]);
+      index += 1;
+    } else if (arg === '--allow-auto-merge') index = parseAutoMerge(argv, index, options);
     else if (arg === '-h' || arg === '--help') options.help = true;
     else if (options.repo === null) options.repo = arg;
     else throw new Error(`unknown argument ${arg}`);
