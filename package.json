@@ -1,5 +1,8 @@
 {
   "name": "repo-standard",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "1.4.5"
+  }
 }
