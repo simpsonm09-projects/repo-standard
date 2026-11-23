@@ -1,6 +1,8 @@
 # Local runs
 
-Run the same checks that CI runs, before pushing.
+Run the same checks that CI runs, before pushing. The local/CI parity rule is policy:
+see [CI speed](https://github.com/simpsonm09-projects/.github/blob/main/standards/core.md#c5-ci-speed).
+This page is the command reference.
 
 ## Tools
 
@@ -11,30 +13,29 @@ curl https://mise.run | sh
 mise install
 ```
 
-Keep the `[tools]` block in Flint's canonical order: the task-runner group first, then the linter group. `flint run --fix flint-setup` or `just lint-fix` normalizes it. CI enforces it with the `flint-setup` check.
-
 ## Task runner
 
-`just` is the one entry point. It delegates to the tools mise pins. See [`task-runner.md`](task-runner.md).
+`just` is the one entry point. See [task-runner.md](task-runner.md).
 
 ```bash
 just --list        # show the recipes
-just lint          # lint every tracked file
-just lint-fix      # fix what is fixable
+just fmt-check     # check formatting
+just lint          # lint
+just typecheck     # type check, where TypeScript exists
 just test          # run the test suite
-just test-portable # run the focused cross-platform regression
-just aislop        # run the AI-slop gate
-just verify        # lint and test
+just check         # everything CI requires
+just agent-files   # check the skill paths and links
+just verify        # lint, test, aislop, security and secret scan
 ```
 
 ## Lint
 
-Run Flint directly to choose the scope.
+Run the tool directly to choose the scope.
 
 ```bash
-mise exec -- flint run          # changed files only
-mise exec -- flint run --full   # every tracked file
-mise exec -- flint run --fix    # fix what is fixable
+bun fmt --check            # formatting
+mise exec -- oxlint .      # JavaScript and TypeScript
+mise exec -- flint run     # non-JavaScript languages
 ```
 
 ## AI-slop gate
@@ -53,6 +54,13 @@ trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL .
 docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --redact
 ```
 
+A pull request scans only the diff; `main` and the weekly schedule run the full scans.
+To mirror a pull request locally:
+
+```bash
+docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --log-opts="origin/main..HEAD" --redact
+```
+
 ## Workflows
 
 Run the GitHub Actions workflows locally with act. A Docker daemon is required.
@@ -63,8 +71,4 @@ act pull_request
 
 ## Hooks
 
-Flint can install a git hook that fixes and lints before each commit.
-
-```bash
-mise exec -- flint hook install
-```
+`just hooks` installs the pre-push hook. See [scripting.md](scripting.md).

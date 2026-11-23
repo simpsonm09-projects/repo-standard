@@ -5,25 +5,25 @@ The reusable repository standard for `simpsonm09-projects`. It owns the shared C
 ## What it provides
 
 - Reusable GitHub Actions workflows for linting, AI-slop detection, and security scanning. Each repository calls them with a thin caller workflow.
-- Flint as the lint aggregator, covering language and file linters from one runner.
+- Bun as the JavaScript and TypeScript toolchain, with flint as the single activation point for the other languages.
 - aislop as the AI-slop quality gate, reporting SARIF to the Security tab.
-- Trivy for vulnerability, secret, and misconfiguration scanning, plus a dedicated secret scanner with full git history.
+- Trivy for vulnerability scanning, diff-only on a pull request and full on `main` and the weekly schedule, plus a dedicated secret scanner.
 - Dependabot for dependency and action updates, with alerts and security updates from the organization.
-- Ruleset JSON and an idempotent apply script for branch and tag protection.
+- Ruleset JSON and an idempotent apply script for branch and tag protection: squash-only `protect-main` with no bypass actors.
 - A `justfile` task-runner convention, with `just` as the one local entry point.
 - A fleet conformance checker that proves every repository matches the standard and stays aligned.
 - A GitHub App token broker that mints installation tokens scoped to one repository.
 - Repository settings and owner-topic convergence through a dry-run apply script.
-- Bash and PowerShell versions of every operational script, with matching behavior.
+- TypeScript scripts executed by Bun through `just`, with bash kept as a thin launcher.
 - A testing convention for the test job each repository adds to its caller workflow.
 - A generated-OpenAPI contract rule for the repositories that expose an API, with a checker that fails a hand-edited document.
-- Agent and skill templates for repository-local setup, with the plugin-versus-repository ownership rule. Repo-local skills live in `.claude/skills/`, which both Claude Code and OpenCode read. Repo-local OpenCode agent profiles stay in `.opencode/agents/`. Shared skills reach both through plugins, not through this repository.
+- Agent and skill templates for repository-local setup, with the plugin-versus-repository ownership rule. Repo-local skills live in `.agents/skills/`, with a relative `.claude/skills/<name>` symlink for Claude Code. Repo-local OpenCode agent profiles stay in `.opencode/agents/`. Shared skills reach both through plugins, not through this repository.
 - A root README convention with a skeleton, a documentation layout, and an MIT license policy.
 - Editor and git conventions, issue and pull request templates, and security policy.
 
 ## Consumption model
 
-Every repository lives in the `simpsonm09-projects` organization. Work happens on a branch in that repository, with a pull request into `main`; the organization also requires signed commits and the required status checks. See [`docs/governance.md`](docs/governance.md) for the branch model and the protection rules.
+Every repository lives in the `simpsonm09-projects` organization. Work happens on a branch in that repository, with a pull request into `main`; the organization also requires signed commits and the required status checks. The normative policy is the [`simpsonm09-projects` owner standard](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md); this repository holds the implementation. See [`docs/governance.md`](docs/governance.md) for the ruleset payloads and the apply scripts.
 
 To adopt the standard in a repository, follow [`docs/adoption.md`](docs/adoption.md).
 

@@ -1,8 +1,13 @@
 # Root README
 
-Every repository carries a root `README.md`. It is the front door for a human or an agent, not the reference. Keep it under about 120 lines and put detail in `docs/`.
+The README shape is policy: see
+[community files, documentation and definition of done](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#community-files-documentation-and-definition-of-done).
+This page is the section table the checker and the template follow.
 
-## Required sections
+Keep the root `README.md` under about 120 lines. It is the front door for a human or an
+agent, not the reference; put detail in `docs/`.
+
+## Sections
 
 Use these sections in this order.
 
@@ -22,15 +27,12 @@ Use these sections in this order.
 
 ## Rules
 
-- The README is the front door. API and user detail live in `docs/`.
+- The README is the front door; API and user detail live in `docs/`.
 - Commands go through `just`. Do not put raw tool invocations in the README.
 - The purpose sentence names the repository and its audience.
 - The `## License` section states `MIT` and links `LICENSE`.
-- A scaffold carries a `## Status` line.
 
 ## Source of truth
-
-State where the repository lives in the opening section.
 
 ```
 This repository lives in `simpsonm09-projects/<repo>`. Work happens on a branch
@@ -38,8 +40,6 @@ with a pull request into `main`.
 See [`repo-standard`](https://github.com/simpsonm09-projects/repo-standard)
 for the branch model and the protection rules.
 ```
-
-A source repository states that it is the source, as `repo-standard` and `repo-template` do. The one personal repository is the PStack plugin source, `simpsonm09/pstack-max`, a fork of `michael-denyer/pstack-claude`; it states that it is a fork and where the upstream lives.
 
 ## Start from the template
 

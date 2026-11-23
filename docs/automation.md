@@ -1,31 +1,48 @@
 # Automation
 
-The standard keeps a small set of optional workflows. A repository copies the ones it needs from `templates/`. None of them are enforced by `check-standard`.
+Dependabot, auto-merge, CodeQL and the label rules are policy: see
+[dependency automation](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#dependency-automation)
+and [CodeQL](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#codeql).
+This guide covers the optional workflows a repository copies from `templates/`. None of
+them is enforced by `check-standard`.
 
 ## Dependency and Action updates
 
-Dependabot is the updater. Each repository carries [`.github/dependabot.yml`](../templates/dependabot.yml), which schedules the weekly check and groups minor and patch updates. Dependabot has no shareable preset, so the file lives in the repository rather than in the standard.
+Dependabot is the only updater. Each repository carries
+[`.github/dependabot.yml`](../templates/dependabot.yml), which schedules the weekly check
+and groups minor and patch updates per ecosystem. Version updates start as soon as the
+file is on the default branch. `scripts/apply-settings.mjs` turns on alerts and security
+updates.
 
-Version updates start as soon as the file is on the default branch. Alerts and security updates come from the organization, and `scripts/apply-settings.mjs` converges them per repository. The standard ships a single updater, so a repository does not add a second one.
-
-Every action reference is pinned to a 40-character commit SHA. Dependabot updates the SHA and the trailing version comment together.
-
-The caller pins this repository at a commit SHA. Dependabot does not update a remote reusable-workflow reference, so [`../templates/workflows/pin-update.yml`](../templates/workflows/pin-update.yml) checks the pin on a schedule and opens a tracking issue when it falls behind `main`.
+Dependabot updates an action SHA and its trailing version comment together. It does not
+update a remote reusable-workflow reference, so
+[`../templates/workflows/pin-update.yml`](../templates/workflows/pin-update.yml) checks
+the caller pin on a schedule and opens a tracking issue when it falls behind `main`.
 
 ## Labels
 
-[`../templates/workflows/labeler.yml`](../templates/workflows/labeler.yml) labels a pull request by the paths it changes, using [`../templates/labeler.yml`](../templates/labeler.yml) as the rule set. Copy the workflow to `.github/workflows/labeler.yml` and the rules to `.github/labeler.yml`.
+[`../templates/workflows/labeler.yml`](../templates/workflows/labeler.yml) labels a pull
+request by the paths it changes, using [`../templates/labeler.yml`](../templates/labeler.yml)
+as the rule set. Copy the workflow to `.github/workflows/labeler.yml` and the rules to
+`.github/labeler.yml`.
 
-Every label named in the rule set must exist in the repository. The labeler skips a label that is missing. Create the set once with `gh label create` or the web UI before the workflow runs.
+Every label named in the rule set must exist in the repository; the labeler skips a
+missing one. Create the set once with `gh label create` or the web UI.
 
 ## Releases
 
-[`../templates/workflows/release.yml`](../templates/workflows/release.yml) creates a GitHub release when a `v*` tag is pushed. It uses `gh release create --generate-notes`, so GitHub writes the notes from the merged pull requests and needs no third-party action. Copy it to `.github/workflows/release.yml`, then push a tag.
+[`../templates/workflows/release.yml`](../templates/workflows/release.yml) creates a
+GitHub release when a `v*` tag is pushed. It uses `gh release create --generate-notes`,
+so GitHub writes the notes from the merged pull requests and no third-party action runs.
+Copy it to `.github/workflows/release.yml`, then push a tag.
 
 Tag protection comes from the `protect-tags` ruleset. See [governance.md](governance.md).
 
 ## CodeQL
 
-[`../templates/workflows/codeql.yml`](../templates/workflows/codeql.yml) runs CodeQL on pushes to `main`, on pull requests, and weekly. Copy it to `.github/workflows/codeql.yml` and replace the `LANGUAGES` placeholder in the matrix with the languages the repository ships.
+CodeQL default setup is a repository setting, not a workflow. Turn it on in the
+repository's code security settings; there is no `codeql.yml` to copy or keep.
 
-CodeQL applies to a repository with executable source code in a language CodeQL supports. A repository of records, docs, or configuration need not carry it. It may carry it when it has scripts in a supported language. The template repository does not carry it. The workflow is the repository's own, and it is never a required status check, so no ruleset lists it.
+A language matrix that default setup cannot express is recorded in the repository's
+`docs/exceptions.md` under `C6.1`, and only then does the repository keep a workflow.
+CodeQL is never a required status check.

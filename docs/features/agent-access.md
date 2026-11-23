@@ -404,12 +404,11 @@ adapter decides whether the command's directory is in scope.
 ## The drift check
 
 [`../../scripts/check-agent-access.mjs`](../../scripts/check-agent-access.mjs) reads
-the declared level per repository and compares both active main rulesets. It
-requires unique `protect-main` and `approval-main` rulesets targeting exactly
-`main`, zero approval and no bypass actors on `protect-main`, and zero
-approvals on `approval-main`. `propose` and `merge` keep an
-organization-admin PR-only bypass on `approval-main`; `full` has no bypass
-actors. Any App actor, extra actor, missing ruleset, or unreadable count is drift.
+the declared level per repository and compares the active main ruleset. It requires
+one unique `protect-main` targeting exactly `main`, zero approvals, squash only,
+signed commits and no bypass actors. Any App actor, extra actor, missing ruleset, or
+unreadable count is drift. `full` grants no bypass: it reads as `merge` until the
+catalog changes.
 
 ```bash
 node scripts/check-agent-access.mjs          # exits 1 on drift, 0 when clean
@@ -474,10 +473,10 @@ Move it into Infisical, where the runtime loads it as `AGENT_APP_PRIVATE_KEY` be
 `AGENT_APP_ID`.
 
 The installation is the per-repository grant. `none` and `read` get no installation.
-`propose`, `merge`, and `full` get one. No GitHub App integration appears in either
-main ruleset or bypasses protection at any level. The human approval bypass for
-`propose` and `merge` is confined to `approval-main`. See
-[governance](../governance.md#bypass-actors).
+`propose`, `merge` and `full` get one. No GitHub App integration appears in any
+ruleset or bypasses protection at any level. See
+[governance](../governance.md) and the
+[agent access policy](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#bypass-actors-and-agent-access).
 
 ## The token broker
 

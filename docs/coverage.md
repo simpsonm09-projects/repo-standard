@@ -1,38 +1,26 @@
 # Coverage
 
-The `coverage` check gates the units a change adds or edits, not the whole repository. A
-repository owns its suite and its coverage tool. It defines one `just coverage` recipe that
-runs the suite and leaves an lcov report at `coverage/lcov.info`. The shared
+The gate is policy: see the
+[CI speed plan](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#ci-speed-c5).
+This guide covers the shared workflow, the recipe contract and the checker.
+
+The `coverage` check gates the units a change adds or edits, not the whole repository.
+A repository owns its suite and its coverage tool. It defines one `just coverage` recipe
+that runs the suite and leaves an lcov report at `coverage/lcov.info`. The shared
 [`coverage` workflow](../.github/workflows/coverage.yml) calls that recipe and then runs
 [`scripts/patch-coverage.mjs`](../scripts/patch-coverage.mjs) over the report and the git
 diff.
 
-Gating changed units avoids retrofitting tests onto existing code, which is why the fleet
-does not set a whole-repository floor.
-
 ## The `just coverage` contract
 
-`just coverage` runs the test suite with coverage and writes the lcov report to
-`coverage/lcov.info`. Keep the recipe thin: call a portable executable such as `node`,
-`pytest`, or a script under `scripts/`. The workflow checks out the pinned standard, runs
-`just coverage`, runs the gate, and uploads `coverage/lcov.info` as the `coverage` artifact.
-
-The recipe is self-contained. The shared workflow installs only the pinned tools with
-`jdx/mise-action`, so it never installs the repository's language dependencies. A recipe
-that assumes they are present fails in CI. Install the repository's own dependencies first
-(`npm ci`, `pip install -e '.[test]'`, and so on), then run the suite with coverage and
-write `coverage/lcov.info`.
-
-The workflow checks the standard out into `.standard/` inside the checkout. A test runner
-that globs the repository must exclude `.standard/`, or it collects the standard's own
-files.
+`just coverage` is self-contained: the shared workflow installs only the pinned tools
+with `jdx/mise-action`, so the recipe installs the repository's own dependencies, runs the
+suite with coverage and writes `coverage/lcov.info`. The workflow checks the standard out
+into `.standard/`; a runner that globs the repository must exclude it.
 
 A repository that calls the shared workflow must define the recipe. The standard check
-enforces it with `ci/coverage-recipe`. A repository with a coverage job calls the shared
-workflow. A repository without one declares why in `docs/exceptions.json` on `ci/coverage`.
-See [governance.md](governance.md#required-checks).
-
-A TypeScript repository with Vitest adds `@vitest/coverage-v8` and reports lcov.
+enforces it with `ci/coverage-recipe`. A repository without a coverage job records the
+reason in its own `docs/exceptions.md` under `ci/coverage`.
 
 ```just
 # Run the suite with coverage.
@@ -40,17 +28,16 @@ coverage:
     npx vitest run --coverage --coverage.reporter=lcov
 ```
 
-A Python repository adds `pytest-cov`.
+A Python repository adds `pytest-cov`:
 
 ```just
-# Run the suite with coverage.
 coverage:
     pytest --cov=src --cov-report=lcov:coverage/lcov.info
 ```
 
 ## The gate
 
-The gate reads the lcov report and the merge-base diff, then measures only the lines the
+The gate reads the lcov report and the merge-base diff and measures only the lines the
 change adds or edits. A change with no measured units passes, so a documentation-only
 change is never blocked.
 
@@ -58,7 +45,8 @@ change is never blocked.
 - `--threshold` is the changed-line floor, 80 percent by default.
 - `--branch-threshold` is the changed-branch floor, 70 percent by default.
 - `--crap` prints an advisory CRAP score per changed function. It never fails the gate.
-- `--allow-missing-branch` degrades to line coverage when the report carries no branch data.
+- `--allow-missing-branch` degrades to line coverage when the report carries no branch
+  data.
 
 The workflow calls the gate as:
 
@@ -69,56 +57,41 @@ The workflow calls the gate as:
         run: node .standard/scripts/patch-coverage.mjs --lcov coverage/lcov.info --base "$BASE" --mode both --allow-missing-branch
 ```
 
-In the standard repository itself, the workflow runs `scripts/patch-coverage.mjs` with no
-`.standard/` prefix. The workflow passes no thresholds, so the defaults apply to every
-repository: 80 percent of changed lines and 70 percent of changed branches. A repository
-cannot set its own values without a change to the shared workflow. A report with no `BRDA`
-records is gated on lines only, and the run says so.
+In this repository the workflow runs `scripts/patch-coverage.mjs` with no `.standard/`
+prefix. The workflow passes no thresholds, so the defaults apply everywhere.
 
 ## Branch data
 
-Branch coverage needs `BRDA` records in the lcov report, and not every tool writes them.
+Branch coverage needs `BRDA` records, and not every tool writes them.
 
 - The Node built-in coverage reporter and Vitest's v8 provider write branch data.
 - `pytest-cov` writes branch data only with `--cov-branch`.
 - `cargo-llvm-cov` writes branch data only with `--branch`.
-- The JaCoCo and Cobertura converters were upgraded to emit `BRDA`.
-- Go writes no branch data. The shared workflow degrades a Go repository to line coverage and prints that it did.
+- The JaCoCo and Cobertura converters emit `BRDA`.
+- Go writes no branch data, so the shared workflow degrades a Go repository to line
+  coverage and prints that it did.
 
 The gate is fail-closed. When the mode requires branches and the report has no `BRDA`
-records, the gate fails instead of silently passing. Pass `--allow-missing-branch` to
-degrade to line coverage instead; the run reports that it degraded and CRAP becomes
-unavailable. CRAP also needs `FN` records, so it prints scores only when the report has both
-branch and function data.
+records, it fails; pass `--allow-missing-branch` to degrade instead. CRAP also needs `FN`
+records.
 
 ## Converters
 
-A Kotlin repository runs Kover or JaCoCo and writes the same lcov file. JVM coverage tools
-report XML or HTML by default, so the repository adds a converter step that writes
-`coverage/lcov.info`. The gate then runs unchanged.
-
-A Go repository writes a coverprofile, not lcov, so it adds `scripts/coverprofile-to-lcov.mjs`,
-which reads the coverprofile at the default `coverage/cover.out` and writes
-`coverage/lcov.info`.
+A Kotlin repository runs Kover or JaCoCo and adds a converter that writes
+`coverage/lcov.info`; [`repo-template`](https://github.com/simpsonm09-projects/repo-template/blob/main/scripts/jacoco-to-lcov.mjs)
+is the worked example. A Go repository writes a coverprofile and converts it:
 
 ```bash
 go test ./... -coverprofile=coverage/cover.out
 node scripts/coverprofile-to-lcov.mjs
 ```
 
-A C#/.NET repository runs coverlet through `dotnet test`, which writes a cobertura XML report
-by default, so it adds `scripts/cobertura-to-lcov.mjs`, which reads that report and writes
-`coverage/lcov.info`.
+A .NET repository runs coverlet and converts the cobertura report:
 
 ```bash
 dotnet test --collect:"XPlat Code Coverage"
 node scripts/cobertura-to-lcov.mjs
 ```
-
-The Go and C#/.NET converters are repository-owned, following the Kotlin converter in
-[`repo-template/scripts/jacoco-to-lcov.mjs`](https://github.com/simpsonm09-projects/repo-template/blob/main/scripts/jacoco-to-lcov.mjs),
-which reads the JaCoCo report at its default `build/reports/jacoco/test/jacocoTestReport.xml`
-and writes `coverage/lcov.info`. The gate then runs unchanged.
 
 ## Run it locally
 
@@ -126,6 +99,5 @@ and writes `coverage/lcov.info`. The gate then runs unchanged.
 node scripts/patch-coverage.mjs --lcov coverage/lcov.info --base origin/main
 ```
 
-Add `--mode both --allow-missing-branch` to mirror what the workflow gates. The 80 and 70
-thresholds are the defaults, so the command needs no threshold flags. A change with no
-measured units passes, so a documentation-only change is never blocked.
+Add `--mode both --allow-missing-branch` to mirror the workflow. The 80 and 70 thresholds
+are the defaults.
