@@ -60,7 +60,27 @@ const SHARED_JOBS = ['lint', 'aislop', 'security', 'standard'];
 // organization rename is in flight.
 const STANDARD_PIN_PREFIXES = REPO_STANDARD_OWNERS.map((owner) => `${owner}/repo-standard/`);
 const SHA_PATTERN = /^[0-9a-fA-F]{40}$/;
-const GROUPS = ['files', 'mise', 'ci', 'dependabot', 'community', 'docs', 'scripting', 'env', 'subprocess'];
+const GROUPS = ['files', 'mise', 'ci', 'hooks', 'dependabot', 'community', 'docs', 'scripting', 'env', 'subprocess'];
+
+// core.md C7.10. A variadic recipe takes the files the hook passes; the rest are
+// fixed-arity. `deps-refresh` accepts manifests but defaults to the two the
+// shared post-checkout and post-merge jobs name.
+const HOOK_RECIPES = [
+  'fmt',
+  'lint',
+  'secrets-staged',
+  'forbidden-files',
+  'workflows',
+  'shellcheck',
+  'agent-files',
+  'commit-msg',
+  'hook-pre-push',
+  'pre-push-check',
+  'deps-refresh',
+  'signing-check',
+];
+const VARIADIC_RECIPES = new Set(['fmt', 'lint', 'forbidden-files', 'workflows', 'shellcheck', 'deps-refresh']);
+const SHARED_HOOK_JOBS = ['core-fmt', 'core-forbidden-files', 'core-policy', 'owner-signing'];
 
 function groupOf(id) {
   const slash = id.indexOf('/');
@@ -161,6 +181,103 @@ function checkPins(text, add) {
   }
 }
 
+// The recipes a hook can call live in the justfile, plus any file it imports
+// (`ops.generated.just` in this repository).
+function hookRecipeText(root) {
+  const file = join(root, 'justfile');
+  if (!existsSync(file)) return '';
+  let text = normalize(readText(file)).replace(/\r\n/g, '\n');
+  for (const match of text.matchAll(/^import\s+"([^"]+)"\s*$/gm)) {
+    const imported = join(root, match[1]);
+    if (existsSync(imported)) text += `\n${normalize(readText(imported)).replace(/\r\n/g, '\n')}`;
+  }
+  return text;
+}
+
+function recipeHeader(text, name) {
+  const match = new RegExp(`^${name}(?:\\s+([^:\\n]*))?:\\s*$`, 'm').exec(text);
+  return match ? (match[1] ?? '') : null;
+}
+
+function checkHooks(root, add) {
+  const lefthook = join(root, 'lefthook.yml');
+  if (!existsSync(lefthook)) {
+    add('hooks/lefthook', 'lefthook.yml is missing (C7.8)');
+  } else {
+    const text = normalize(readText(lefthook)).replace(/\r\n/g, '\n');
+    if (!/git_url:\s*https:\/\/github\.com\/simpsonm09-projects\/\.github\s*$/m.test(text)) {
+      add('hooks/remotes', 'lefthook.yml does not load simpsonm09-projects/.github through remotes');
+    }
+    if (!/^\s*ref:\s*hooks-v2\s*$/m.test(text)) add('hooks/remotes', 'lefthook.yml does not pin the hooks-v2 tag');
+    for (const config of ['hooks/core.yml', 'hooks/owner.yml']) {
+      if (!new RegExp(`^\\s*-\\s*${config.replace('.', '\\.')}\\s*$`, 'm').test(text)) {
+        add('hooks/remotes', `lefthook.yml does not load ${config}`);
+      }
+    }
+    for (const match of text.matchAll(/^\s*-\s*name:\s*(\S+)\s*$/gm)) {
+      if (/^(core|owner)-/u.test(match[1]))
+        add('hooks/job-name', `lefthook.yml reuses the shared job name ${match[1]}`);
+    }
+  }
+
+  const mise = join(root, 'mise.toml');
+  if (existsSync(mise)) {
+    const text = normalize(readText(mise));
+    if (!/^\s*"aqua:evilmartians\/lefthook"\s*=/m.test(text)) {
+      add('hooks/lefthook-pin', 'mise.toml does not pin aqua:evilmartians/lefthook');
+    }
+    if (!/^\s*"aqua:gitleaks\/gitleaks"\s*=/m.test(text)) {
+      add('hooks/gitleaks-pin', 'mise.toml does not pin aqua:gitleaks/gitleaks');
+    }
+  }
+
+  const recipes = hookRecipeText(root);
+  for (const name of HOOK_RECIPES) {
+    const parameters = recipeHeader(recipes, name);
+    if (parameters === null) {
+      add('hooks/recipes', `justfile has no "${name}" recipe from the C7.10 contract`);
+    } else if (VARIADIC_RECIPES.has(name) && !parameters.includes('*')) {
+      add('hooks/recipes', `recipe "${name}" is not variadic; it must accept the files the hook passes`);
+    }
+  }
+
+  const ci = join(root, '.github/workflows/ci.yml');
+  if (existsSync(ci)) {
+    const jobs = parseJobs(normalize(readText(ci)));
+    const block = jobs.get('hooks');
+    if (!block) {
+      add('hooks/ci', 'ci.yml has no "hooks" job (C7.9)');
+    } else {
+      const body = block.join('\n');
+      if (!/^\s+runs-on:/m.test(body)) add('hooks/ci', 'the "hooks" job does not run on a runner');
+      for (const command of ['lefthook install', 'lefthook dump', 'lefthook validate']) {
+        if (!body.includes(command)) add('hooks/ci', `the "hooks" job does not run "${command}"`);
+      }
+      for (const job of SHARED_HOOK_JOBS) {
+        if (!body.includes(job)) add('hooks/ci', `the "hooks" job does not assert the ${job} job loaded`);
+      }
+    }
+  }
+
+  const ignore = join(root, '.gitignore');
+  if (!existsSync(ignore) || !/^\s*lefthook-local\.yml\s*$/m.test(normalize(readText(ignore)))) {
+    add('hooks/gitignore', '.gitignore does not ignore lefthook-local.yml');
+  }
+
+  if (existsSync(join(root, '.githooks')))
+    add('hooks/githooks', '.githooks/ still exists; Lefthook replaced it (C7.8)');
+
+  const agents = join(root, 'AGENTS.md');
+  if (!existsSync(agents)) {
+    add('hooks/agents', 'AGENTS.md is missing');
+  } else {
+    const text = normalize(readText(agents));
+    if (!text.includes('LEFTHOOK=0') || !text.includes('--no-verify')) {
+      add('hooks/agents', 'AGENTS.md does not forbid LEFTHOOK=0 and --no-verify (C7.11)');
+    }
+  }
+}
+
 function checkDependabot(root, add) {
   const file = join(root, '.github/dependabot.yml');
   if (!existsSync(file)) return;
@@ -220,6 +337,7 @@ export function checkStandard(root) {
   checkFiles(repoRoot, add);
   checkMise(repoRoot, add);
   checkCi(repoRoot, add);
+  checkHooks(repoRoot, add);
   checkDependabot(repoRoot, add);
   checkCommunity(repoRoot, add);
   checkDocs(repoRoot, add);

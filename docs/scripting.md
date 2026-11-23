@@ -17,7 +17,9 @@ the test runner.
 
 - `scripts/` holds repository operations. Each one is reachable from an operation
   manifest entry or a recipe.
-- A hook lives in `templates/hooks/pre-push` and is installed by `just hooks`.
+- Git hooks run through Lefthook: `lefthook.yml` loads the shared `hooks-v2` configs and
+  the `just` recipes implement the policy. `just hooks` installs them; there is no
+  checked-in `.githooks` directory and no per-repository hook script.
 - A single-platform script declares the platform in a header comment within the first
   ten lines:
 
@@ -40,17 +42,17 @@ the test runner.
 `scripts/check-standard.mjs` runs a `scripting` group over a repository. Each rule is a
 named entry in the printed matrix.
 
-| Entry | Rule |
-| --- | --- |
-| `scripting/windows-shell` | the root `justfile` has a `set windows-shell` line |
-| `scripting/shell-ops` | a recipe body has no `&&`, `&`, `;`, `|`, redirection, `$VAR`, backtick substitution, `./` or `.\` |
-| `scripting/interpreter` | a recipe body names no interpreter as its command word outside a `{{ ... }}` expression or a `mise exec`/`mise run` line |
+| Entry                       | Rule                                                                                                                                |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `scripting/windows-shell`   | the root `justfile` has a `set windows-shell` line                                                                                  |
+| `scripting/shell-ops`       | a recipe body has no `&&`, `&`, `;`, `                                                                                              | `, redirection, `$VAR`, backtick substitution, `./`or`.\` |
+| `scripting/interpreter`     | a recipe body names no interpreter as its command word outside a `{{ ... }}` expression or a `mise exec`/`mise run` line            |
 | `scripting/script-declared` | every `scripts/**/*.ps1`, `scripts/**/*.sh` and `scripts/**/*.ts` is referenced by an operation or recipe, or declares its platform |
-| `scripting/skill-recipe` | a non-vendored skill says `just <recipe>`, never a script path |
-| `scripting/skill-location` | a skill lives in `.agents/skills/`, not `.claude/skills/` or `.opencode/skills/` |
-| `scripting/skill-link` | every `.agents/skills/<name>` has the relative symlink `.claude/skills/<name>` → `../../.agents/skills/<name>` |
-| `scripting/skill-set` | the two skill sets differ, or a link is broken |
-| `scripting/tools-check` | a repository with a `tools.yaml` has a `tools-check` recipe |
+| `scripting/skill-recipe`    | a non-vendored skill says `just <recipe>`, never a script path                                                                      |
+| `scripting/skill-location`  | a skill lives in `.agents/skills/`, not `.claude/skills/` or `.opencode/skills/`                                                    |
+| `scripting/skill-link`      | every `.agents/skills/<name>` has the relative symlink `.claude/skills/<name>` → `../../.agents/skills/<name>`                      |
+| `scripting/skill-set`       | the two skill sets differ, or a link is broken                                                                                      |
+| `scripting/tools-check`     | a repository with a `tools.yaml` has a `tools-check` recipe                                                                         |
 
 Run the group on one repository with `just check-standard .`. Run it over the whole fleet
 with `just audit-fleet <repos-dir>`, which prints one matrix and exits non-zero when any

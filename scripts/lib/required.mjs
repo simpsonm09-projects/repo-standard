@@ -17,6 +17,7 @@ export const BASE_CONTEXTS = Object.freeze([
   'security / trivy',
   'security / secrets',
   'standard / standard',
+  'hooks',
   'test',
 ]);
 

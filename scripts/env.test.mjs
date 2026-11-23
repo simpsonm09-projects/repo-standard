@@ -310,7 +310,10 @@ function testPrePush(assert) {
     runGit(['commit', '-m', 'safe base'], clone);
     const safeCommit = runGit(['rev-parse', 'HEAD'], clone).trim();
     const hook = join(clone, '.git', 'hooks', 'pre-push');
-    writeFileSync(hook, readFileSync(join(ROOT, '..', 'templates', 'hooks', 'pre-push')));
+    writeFileSync(
+      hook,
+      `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(join(ROOT, '..', 'scripts', 'pre-push.mjs'))} "$@"\n`,
+    );
     chmodSync(hook, 0o755);
 
     const push = (source, destination, expected, label) => {

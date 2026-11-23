@@ -18,6 +18,7 @@ const GROUPS = [
   'files',
   'mise',
   'ci',
+  'hooks',
   'dependabot',
   'community',
   'docs',

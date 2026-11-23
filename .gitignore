@@ -5,6 +5,7 @@ trivy.sarif
 
 # Local tool state
 node_modules/
+lefthook-local.yml
 .aislop/history.jsonl
 .aislop/agent/
 .DS_Store

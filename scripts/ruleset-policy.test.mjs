@@ -9,6 +9,7 @@ import { compareMainRulesets, findUniqueRuleset } from './lib/ruleset-policy.mjs
 import { buildPayload } from './ruleset-payload.mjs';
 import { compare } from './check-agent-access.mjs';
 import { EXIT } from './lib/exit.mjs';
+import { expectedChecks } from './lib/required.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -312,7 +313,7 @@ if (endpoint === 'repos/simpsonm09-projects/example') {
       { type: 'required_signatures' },
       { type: 'pull_request', parameters: { required_approving_review_count: 0, allowed_merge_methods: ['squash'] } },
       { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true,
-        required_status_checks: ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'test', 'coverage / coverage'].map((context) => ({ context })) } },
+        required_status_checks: ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'hooks', 'test', 'coverage / coverage'].map((context) => ({ context })) } },
     ],
   };
   process.stdout.write(JSON.stringify(response));
@@ -379,8 +380,9 @@ function testRequiredContexts(bin, level) {
   );
   const withoutLevel = runCheckRepoCli([], bin, 'missing-required-checks');
   assert(
-    withoutLevel.status === 1 && (withoutLevel.stdout.match(/gap ruleset\/required-missing:/g) ?? []).length === 7,
-    'without a level, the same corrupt required contexts produce all seven required-missing gaps and fail',
+    withoutLevel.status === 1 &&
+      (withoutLevel.stdout.match(/gap ruleset\/required-missing:/g) ?? []).length === expectedChecks('covered').length,
+    'without a level, the same corrupt required contexts produce every required-missing gap and fail',
   );
 }
 
