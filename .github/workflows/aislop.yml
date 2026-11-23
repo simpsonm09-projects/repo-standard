@@ -11,27 +11,25 @@ jobs:
   aislop:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    env:
-      # Only the tools named in `install_args` are installed. Nothing else may
-      # pull the rest of the pinned set in on the fly, or the cache key stops
-      # meaning anything.
-      MISE_NOT_FOUND_AUTO_INSTALL: 'false'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The scan reads the working tree, so one tool is enough and the job
-      # installs only it. `npm:aislop` needs Node as its install dependency, so
-      # that pin comes with it. See C5.2 in the core standard.
-      - name: Install the aislop pin
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+      # The audit is one npm package tree. Caching npm's content store keeps
+      # the download off the pull request path without putting Node and the
+      # package tree into every other job's mise cache (C5.2).
+      - name: Restore the npm cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          install_args: node npm:aislop
+          path: ~/.npm
+          key: npm-aislop-0.16.1-${{ runner.os }}
+          restore-keys: |
+            npm-aislop-0.16.1-
       # One run: the exit code is the gate, and the SARIF it writes is uploaded
       # below. Running the audit twice doubled the slowest required job.
       - name: Enforce the score gate
-        run: aislop ci --sarif > aislop.sarif
+        run: npx --yes aislop@0.16.1 ci --sarif > aislop.sarif
       # SARIF lands in the Security tab only when code scanning is available,
       # which a free private repository does not have. It is also not a gate,
       # so it stays off the pull request path (C5.4).
