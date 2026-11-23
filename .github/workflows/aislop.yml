@@ -17,10 +17,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
+      # The audit shells out to the package manager, so the pinned tool set has
+      # to be on PATH, not only the Node that runs npx.
+      - name: Install pinned tools
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
       - name: Scan and write SARIF
         run: npx --yes aislop@0.16.1 ci --sarif > aislop.sarif
         continue-on-error: true
