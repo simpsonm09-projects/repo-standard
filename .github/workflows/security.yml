@@ -8,10 +8,11 @@ permissions:
   security-events: write
 
 jobs:
+  # Required on a pull request. Trivy reads the working tree, so it scans the
+  # code the pull request would merge.
   trivy:
-    if: github.repository_owner == 'simpsonm09-org' || github.repository_owner == 'simpsonm09-projects'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,6 +28,46 @@ jobs:
           format: sarif
           output: trivy.sarif
           exit-code: "1"
+      # Best-effort. Code scanning is unavailable on a free private
+      # repository, so the SARIF scan step is the gate.
+      - name: Upload SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        with:
+          sarif_file: trivy.sarif
+
+  # Required on a pull request. A pull request scans only the commits it adds;
+  # `main` and the weekly schedule scan the full history.
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan the pull request diff for secrets
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --log-opts="${BASE}..HEAD" --redact --exit-code 1
+      - name: Scan the full history for secrets
+        if: github.event_name != 'pull_request'
+        run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --redact --exit-code 1
+
+  # Not required. The license audit is advisory and only needs to run on `main`
+  # and the weekly schedule.
+  license:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Report only. Copyleft licenses carry a default HIGH severity in Trivy and
       # would gate a repository for a dependency decision, so the scan never fails.
       - name: Scan licenses
@@ -39,30 +80,9 @@ jobs:
           format: sarif
           output: trivy-license.sarif
           exit-code: "0"
-      # Best-effort. Code scanning is unavailable on a free private
-      # repository, so the SARIF scan step is the gate.
-      - name: Upload SARIF
-        if: always()
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
-        with:
-          sarif_file: trivy.sarif
       - name: Upload license SARIF
         if: always()
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
         with:
           sarif_file: trivy-license.sarif
-
-  secrets:
-    if: github.repository_owner == 'simpsonm09-org' || github.repository_owner == 'simpsonm09-projects'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Scan git history for secrets
-        run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=. --redact --exit-code 1
