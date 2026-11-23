@@ -2,6 +2,19 @@ name: coverage
 
 on:
   workflow_call:
+    inputs:
+      # Optional package cache. The recipe runs on a fresh runner, so a
+      # repository that compiles a project (Go, Gradle, .NET, Cargo) restores
+      # the same cache its other jobs use instead of rebuilding from zero
+      # (C5.2). Empty by default: a repository with no build step is unaffected.
+      cache_path:
+        description: Extra paths for actions/cache, one per line.
+        type: string
+        default: ''
+      cache_key:
+        description: Cache key for cache_path; ignored when cache_path is empty.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -39,6 +52,12 @@ jobs:
           ref: ${{ steps.pin.outputs.ref }}
           path: .standard
           persist-credentials: false
+      - name: Restore the repository package cache
+        if: inputs.cache_path != ''
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
       - name: Install pinned tools
         uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
       - name: Run the coverage recipe
