@@ -313,7 +313,7 @@ if (endpoint === 'repos/simpsonm09-projects/example') {
       { type: 'required_signatures' },
       { type: 'pull_request', parameters: { required_approving_review_count: 0, allowed_merge_methods: ['squash'] } },
       { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true,
-        required_status_checks: ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'hooks', 'test', 'coverage / coverage'].map((context) => ({ context })) } },
+        required_status_checks: ['lint / flint', 'aislop / aislop', 'security / trivy', 'security / secrets', 'standard / standard', 'test', 'coverage / coverage'].map((context) => ({ context })) } },
     ],
   };
   process.stdout.write(JSON.stringify(response));

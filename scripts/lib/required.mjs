@@ -17,7 +17,6 @@ export const BASE_CONTEXTS = Object.freeze([
   'security / trivy',
   'security / secrets',
   'standard / standard',
-  'hooks',
   'test',
 ]);
 
@@ -27,6 +26,11 @@ export const BASE_CONTEXTS = Object.freeze([
 export const COVERAGE_EXCEPTION = 'ci/coverage';
 
 const EXTRA_TEST_JOB = /^test-[A-Za-z0-9_-]+$/;
+
+// The public rollout adds `hooks` to each protect-main ruleset after the job
+// exists. A ruleset that already requires it is accepted, and a ruleset that
+// does not yet is not a missing check; the `hooks/ci` rule guarantees the job.
+const OPTIONAL_CONTEXTS = new Set(['hooks']);
 
 export function kindOf(exceptions, repo) {
   if (!repo) return 'covered';
@@ -65,7 +69,7 @@ export function requiredGaps({ kind, live, jobs }) {
         id: 'ruleset/required-no-job',
         message: `${context} is required, but ci.yml has no "${job}" job to report it`,
       });
-    } else if (!expected.includes(context) && !EXTRA_TEST_JOB.test(context)) {
+    } else if (!expected.includes(context) && !EXTRA_TEST_JOB.test(context) && !OPTIONAL_CONTEXTS.has(context)) {
       gaps.push({
         id: 'ruleset/required-unexpected',
         message: `${context} is required, but this repository does not expect it`,

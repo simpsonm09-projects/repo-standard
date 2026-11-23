@@ -162,7 +162,7 @@ function testTokenizer(assert) {
   expectGap(
     assert,
     'a template holding braces before a call',
-    lines(IMPORT, 'const t = `\${ {a: 1}.a }`;', "spawnSync('git', []);"),
+    lines(IMPORT, 'const t = `${ {a: 1}.a }`;', "spawnSync('git', []);"),
     'no options',
   );
   expectGap(

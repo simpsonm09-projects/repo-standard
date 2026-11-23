@@ -45,7 +45,6 @@ const BASE_LIVE = [
   'security / trivy',
   'security / secrets',
   'standard / standard',
-  'hooks',
   'test',
 ];
 
@@ -206,6 +205,23 @@ function testLiveExtraTestJob(assert) {
   assert(
     ids(withoutJob).join() === 'ruleset/required-no-job',
     `test-node required with no job: got ${ids(withoutJob)}`,
+  );
+
+  const hooks = requiredGaps({
+    kind: 'covered',
+    live: [...expectedChecks('covered'), 'hooks'],
+    jobs: jobsOf(COVERED_JOBS),
+  });
+  assert(hooks.length === 0, `the rollout may require hooks once its job exists: got ${JSON.stringify(hooks)}`);
+
+  const hooksWithoutJob = requiredGaps({
+    kind: 'covered',
+    live: [...expectedChecks('covered'), 'hooks'],
+    jobs: jobsOf(COVERED_JOBS.filter((job) => job !== 'hooks')),
+  });
+  assert(
+    ids(hooksWithoutJob).join() === 'ruleset/required-no-job',
+    `hooks required with no job: got ${ids(hooksWithoutJob)}`,
   );
 }
 
