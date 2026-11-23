@@ -19,10 +19,6 @@
 # JavaScript and TypeScript toolchain
 bun = "1.4.5"
 node = "26.13.1"
-
-# AI-slop gate. The `aislop` recipe and the reusable workflow both run this
-# pin, so CI never resolves a version from the registry at run time (C7.2).
-"npm:aislop" = "0.16.1"
 "npm:oxlint" = "1.93.0"
 
 # Linters
