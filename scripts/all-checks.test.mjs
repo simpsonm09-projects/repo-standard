@@ -87,20 +87,6 @@ export function runTest() {
     allChecksGaps(newPlatform, { required: false }).some((gap) => gap.message.includes('test-linux')),
     'require a newly declared platform job',
   );
-  const withPlatforms = new Map(
-    [...base, 'test-windows', 'test-macos', 'all-checks'].map((name) => [
-      name,
-      name === 'all-checks'
-        ? [
-            ...validBlock.slice(0, 1),
-            `    needs: [${[...base, 'test-windows', 'test-macos'].join(', ')}]`,
-            ...validBlock.slice(2),
-          ]
-        : [],
-    ]),
-  );
-  assert(allChecksGaps(withPlatforms, { required: false }).length === 0, 'include both standard portability jobs');
-
   const unsafeIf = new Map(jobs).set(
     'all-checks',
     validBlock.map((line) => line.replace('if: always()', 'if: success()')),

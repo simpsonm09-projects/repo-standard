@@ -27,6 +27,10 @@ export const COVERAGE_EXCEPTION = 'ci/coverage';
 
 const EXTRA_TEST_JOB = /^test-[A-Za-z0-9_-]+$/;
 
+// C5.6: every job runs on Linux. A ruleset that still requires a Windows or
+// macOS context would wait for a job that no longer exists.
+export const PLATFORM_CONTEXTS = new Set(['test-windows', 'test-macos']);
+
 // The owner standard names `fmt` and `typecheck` as required checks, and the
 // public rollout adds `hooks` to each protect-main ruleset after the job exists.
 // A ruleset that already requires them is accepted, and a ruleset that does not
@@ -65,6 +69,13 @@ export function requiredGaps({ kind, live, jobs }) {
     }
   }
   for (const context of live) {
+    if (PLATFORM_CONTEXTS.has(context)) {
+      gaps.push({
+        id: 'ruleset/platform-check',
+        message: `${context} is a Windows or macOS check; every job runs on Linux (C5.6)`,
+      });
+      continue;
+    }
     const job = jobOf(context);
     if (!jobs.has(job)) {
       gaps.push({

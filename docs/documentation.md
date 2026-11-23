@@ -16,7 +16,7 @@ reach the index. See [root-readme.md](root-readme.md).
 Keep `docs/README.md` as the index when the repository has any markdown under `docs/`.
 Every other markdown file under `docs/` must be reachable from it through links, so a
 document cannot become unreachable. Do not name a document so it differs from another
-only by case; Windows collapses the two into one file.
+only by case.
 
 ## Manifest
 

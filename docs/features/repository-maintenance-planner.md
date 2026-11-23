@@ -126,5 +126,5 @@ an existing Python 3.10 or newer interpreter from a fixed list of interpreter
 names on `PATH`, or fails with a clear error when none is present. The
 dispatcher takes no interpreter from the environment, so a successful check
 always means an interpreter on the host ran the suite. The hosted
-`repo-maintenance-planner` workflow runs the same operation on Linux, Windows,
-and macOS with Python set up explicitly.
+`repo-maintenance-planner` workflow runs the same operation on Linux with
+Python set up explicitly.

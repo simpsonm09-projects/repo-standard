@@ -216,6 +216,39 @@ function testCi(assert) {
   );
 }
 
+function platformGaps(files) {
+  const root = complete(files);
+  try {
+    return checkStandard(root)
+      .gaps.filter((gap) => gap.id === 'ci/platform')
+      .map((gap) => gap.message);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function testPlatform(assert) {
+  const named = platformGaps({
+    '.github/workflows/ci.yml': `${CI}  test-windows:\n    runs-on: ubuntu-24.04\n`,
+  });
+  assert(
+    named.some((message) => message.includes('test-windows')),
+    'a test-windows job is rejected by name',
+  );
+
+  const runner = platformGaps({
+    '.github/workflows/ci.yml': `${CI}  test-linux:\n    runs-on: macos-latest\n`,
+  });
+  assert(
+    runner.some((message) => message.includes('macos-latest')),
+    'a macOS runner is rejected',
+  );
+  assert(
+    platformGaps({ '.github/workflows/ci.yml': `${CI}  test-linux:\n    runs-on: ubuntu-24.04\n` }).length === 0,
+    'a Linux job is allowed',
+  );
+}
+
 function testIgnoreAndAgents(assert) {
   expect(assert, complete({ '.gitignore': 'node_modules/\n' }), ['hooks/gitignore'], 'an ignore gap is reported');
   expect(
@@ -242,6 +275,7 @@ export function runTest() {
     testPins(assert);
     testRecipes(assert);
     testCi(assert);
+    testPlatform(assert);
     testIgnoreAndAgents(assert);
     testGithooks(assert);
     process.stdout.write('check-standard.test: ok\n');

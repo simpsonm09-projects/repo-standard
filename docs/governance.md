@@ -9,10 +9,10 @@ scripts and the gaps the checker prints.
 
 [`../rulesets/`](../rulesets) holds the payloads the apply scripts upsert by name.
 
-| File | Target | Rule |
-| --- | --- | --- |
+| File                                                 | Target            | Rule                                                                                                       |
+| ---------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------- |
 | [`protect-main.json`](../rulesets/protect-main.json) | `refs/heads/main` | Pull request required, zero approvals, squash only, signed commits, the required checks, no bypass actors. |
-| [`protect-tags.json`](../rulesets/protect-tags.json) | `refs/tags/v*` | Blocks update, deletion and force push. |
+| [`protect-tags.json`](../rulesets/protect-tags.json) | `refs/tags/v*`    | Blocks update, deletion and force push.                                                                    |
 
 There is no `approval-main` payload. With zero required approvals and no bypass actors a
 second review ruleset would exist only to carry a bypass.
@@ -30,10 +30,6 @@ on a private repository until it becomes public.
 ```bash
 bash scripts/apply-rulesets.sh <owner>/<repo>          # dry run
 bash scripts/apply-rulesets.sh <owner>/<repo> --apply
-```
-
-```powershell
-pwsh -File scripts/apply-rulesets.ps1 -Repo <owner>/<repo> -Apply
 ```
 
 Print one payload without writing it:
@@ -58,18 +54,18 @@ converges the rest; see [github-settings.md](github-settings.md).
 an empty list. Pass `--agent-level propose|merge|full` to fail closed on an omitted
 field.
 
-| Gap id | Meaning |
-| --- | --- |
-| `ruleset/protect-main` | `protect-main` is missing or duplicated. |
-| `ruleset/ambiguous` | The ruleset id is not numeric. |
-| `ruleset/approval-policy` | The explicit level is unsupported or does not match the policy. |
-| `ruleset/rules`, `ruleset/required-checks` | The rules or the required checks are unreadable. |
-| `ruleset/enforcement`, `ruleset/main-target` | The ruleset is inactive or cannot be verified to cover `main`. |
-| `ruleset/protect-rule` | There is not exactly one `pull_request` rule. |
-| `ruleset/protect-approval` | The approval count is not zero. |
-| `ruleset/protect-signatures` | There is not exactly one `required_signatures` rule. |
-| `ruleset/protect-bypass` | The bypass list is readable and not empty. |
-| `ruleset/required-strict` | The ruleset does not require the branch to be up to date. |
+| Gap id                                                                               | Meaning                                                                               |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `ruleset/protect-main`                                                               | `protect-main` is missing or duplicated.                                              |
+| `ruleset/ambiguous`                                                                  | The ruleset id is not numeric.                                                        |
+| `ruleset/approval-policy`                                                            | The explicit level is unsupported or does not match the policy.                       |
+| `ruleset/rules`, `ruleset/required-checks`                                           | The rules or the required checks are unreadable.                                      |
+| `ruleset/enforcement`, `ruleset/main-target`                                         | The ruleset is inactive or cannot be verified to cover `main`.                        |
+| `ruleset/protect-rule`                                                               | There is not exactly one `pull_request` rule.                                         |
+| `ruleset/protect-approval`                                                           | The approval count is not zero.                                                       |
+| `ruleset/protect-signatures`                                                         | There is not exactly one `required_signatures` rule.                                  |
+| `ruleset/protect-bypass`                                                             | The bypass list is readable and not empty.                                            |
+| `ruleset/required-strict`                                                            | The ruleset does not require the branch to be up to date.                             |
 | `ruleset/required-missing`, `ruleset/required-no-job`, `ruleset/required-unexpected` | The live required set differs from the expected set, or names a check no job reports. |
 
 `check-agent-access` compares every roster repository's live `protect-main` with the

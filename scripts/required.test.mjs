@@ -80,7 +80,7 @@ function ciText({ coverage = null, omit = [], testSuffixes = [] } = {}) {
     blocks.push('  hooks:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: lefthook install');
   if (!omit.includes('test')) blocks.push('  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: just test');
   for (const suffix of testSuffixes)
-    blocks.push(`  test-${suffix}:\n    runs-on: windows-latest\n    steps:\n      - run: just test`);
+    blocks.push(`  test-${suffix}:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: just test`);
   return ['name: ci', 'on:', '  pull_request:', 'jobs:', ...blocks, ''].join('\n');
 }
 
@@ -241,6 +241,30 @@ function testLiveExtraTestJob(assert) {
 
     const older = requiredGaps({ kind: 'covered', live: expectedChecks('covered'), jobs: jobsOf(COVERED_JOBS) });
     assert(older.length === 0, `an older ruleset without ${context} is not a gap: got ${JSON.stringify(older)}`);
+  }
+}
+
+function testLivePlatformCheck(assert) {
+  for (const context of ['test-windows', 'test-macos']) {
+    const withJob = requiredGaps({
+      kind: 'covered',
+      live: [...expectedChecks('covered'), context],
+      jobs: jobsOf([...COVERED_JOBS, context]),
+    });
+    assert(
+      ids(withJob).join() === 'ruleset/platform-check',
+      `${context} is rejected even when its job still exists: got ${ids(withJob)}`,
+    );
+
+    const withoutJob = requiredGaps({
+      kind: 'covered',
+      live: [...expectedChecks('covered'), context],
+      jobs: jobsOf(COVERED_JOBS),
+    });
+    assert(
+      ids(withoutJob).join() === 'ruleset/platform-check',
+      `${context} is rejected rather than reported as a missing job: got ${ids(withoutJob)}`,
+    );
   }
 }
 
@@ -620,6 +644,7 @@ export function runTest() {
     testLiveCoveredRepository(assert);
     testLiveUncoveredRepository(assert);
     testLiveExtraTestJob(assert);
+    testLivePlatformCheck(assert);
     testLiveNoJobForBaseCheck(assert);
     testRulesetGaps(assert);
     testProtectMainSelection(assert);

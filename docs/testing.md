@@ -11,18 +11,18 @@ Add a `test` job to the repository's caller workflow next to the shared jobs.
 generic test job. Replace the test command with the repository's own:
 
 ```yaml
-  test:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@<sha> # <version>
-        with:
-          persist-credentials: false
-      - name: Install pinned tools
-        uses: jdx/mise-action@<sha> # <version>
-      - name: Test
-        run: just test
+test:
+  runs-on: ubuntu-24.04
+  timeout-minutes: 15
+  steps:
+    - name: Checkout
+      uses: actions/checkout@<sha> # <version>
+      with:
+        persist-credentials: false
+    - name: Install pinned tools
+      uses: jdx/mise-action@<sha> # <version>
+    - name: Test
+      run: just test
 ```
 
 Pin every action to a commit SHA with the version in a trailing comment. See
@@ -33,13 +33,11 @@ the repository has a selector; `main` and the weekly schedule run the full suite
 
 ### A second test job
 
-A suite that must run on another host is a job named `test-<suffix>`, for example
-`test-windows` or `test-macos` running `just test-portable`. It stays non-required until
-it has been green for a week. The checker accepts a required `test-<suffix>` check only
-when `ci.yml` defines that job.
-
-This repository dogfoods the pair in its own [`ci.yml`](../.github/workflows/ci.yml); the
-jobs run on `main` and the weekly schedule, not on the required pull request path.
+A second suite is a job named `test-<suffix>` on an `ubuntu-*` runner, for example a
+shard or a language matrix. It stays non-required until it has been green for a week. The
+checker accepts a required `test-<suffix>` check only when `ci.yml` defines that job.
+Every job runs on Linux (C5.6); a `test-windows` or `test-macos` job, or any
+`windows-*`/`macos-*` runner, is a `ci/platform` gap.
 
 ## Regenerate the API document
 
@@ -47,10 +45,10 @@ A repository that exposes an HTTP API regenerates the OpenAPI document and fails
 drift. Run it before the coverage gate. See [documentation.md](documentation.md).
 
 ```yaml
-      - name: Check the API document
-        run: |
-          just spec
-          git diff --exit-code -- docs/openapi.*
+- name: Check the API document
+  run: |
+    just spec
+    git diff --exit-code -- docs/openapi.*
 ```
 
 ## Required check
