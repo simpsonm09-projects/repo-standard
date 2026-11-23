@@ -71,7 +71,6 @@ field.
 | `ruleset/protect-bypass` | The bypass list is readable and not empty. |
 | `ruleset/required-strict` | The ruleset does not require the branch to be up to date. |
 | `ruleset/required-missing`, `ruleset/required-no-job`, `ruleset/required-unexpected` | The live required set differs from the expected set, or names a check no job reports. |
-| `ruleset/merge-methods` | `protect-main` does not allow squash only. |
 
 `check-agent-access` compares every roster repository's live `protect-main` with the
 policy for its declared level.
