@@ -978,8 +978,8 @@ function testHook(assert) {
     chmodSync(hook, 0o755);
     writeFakeResolver(base);
     const shell = resolveShell();
-    const orgUrl = (repo) => `https://github.com/simpsonm09-org/${repo}.git`;
-    const orgScpUrl = (repo) => `git@github.com:simpsonm09-org/${repo}.git`;
+    const orgUrl = (repo) => `https://github.com/simpsonm09-projects/${repo}.git`;
+    const orgScpUrl = (repo) => `git@github.com:simpsonm09-projects/${repo}.git`;
     const forkUrl = (repo) => `https://github.com/simpsonm09/${repo}.git`;
     const nest = orgUrl('fixture-nest');
     const go = orgUrl('fixture-go');
@@ -996,7 +996,7 @@ function testHook(assert) {
       { name: 'merge denies a tag push', ref: 'refs/tags/v1', url: rust, exit: 1 },
       { name: 'read denies a branch push', ref: 'refs/heads/feat/x', url: dotnet, exit: 1 },
       { name: 'read denies a branch push to an SCP-style organization remote', ref: 'refs/heads/feat/x', url: orgScpUrl('fixture-dotnet'), exit: 1 },
-      { name: 'read denies a branch push to an HTTP organization remote', ref: 'refs/heads/feat/x', url: 'http://github.com/simpsonm09-org/fixture-dotnet.git', exit: 1 },
+      { name: 'read denies a branch push to an HTTP organization remote', ref: 'refs/heads/feat/x', url: 'http://github.com/simpsonm09-projects/fixture-dotnet.git', exit: 1 },
       { name: 'read denies a tag push', ref: 'refs/tags/v1', url: dotnet, exit: 1 },
       { name: 'a fork remote is out of scope', ref: 'refs/heads/main', url: forkUrl('fixture-dotnet'), exit: 0 },
       { name: 'an SCP-style personal fork remote is out of scope', ref: 'refs/heads/main', url: `git@github.com:simpsonm09/fixture-dotnet.git`, exit: 0 },

@@ -64,13 +64,12 @@ function testRulesets() {
   assert(buildPayload({ ...protect, bypass_actors: admin }, 'full').bypass_actors.length === 0, 'protect payload strips all bypass actors');
 
   const committedProtect = JSON.parse(readFileSync(new URL('../rulesets/protect-main.json', import.meta.url), 'utf8'));
-  const committedApproval = JSON.parse(readFileSync(new URL('../rulesets/approval-main.json', import.meta.url), 'utf8'));
   const contexts = committedProtect.rules.find((entry) => entry.type === 'required_status_checks').parameters.required_status_checks.map((entry) => entry.context);
   assert(committedProtect.rules.some((entry) => entry.type === 'required_signatures'), 'protect-main keeps required signatures');
   assert(committedProtect.rules.find((entry) => entry.type === 'pull_request').parameters.required_approving_review_count === 0, 'protect-main carries zero approval count');
   assert(committedProtect.bypass_actors.length === 0, 'committed protect-main has no bypass actors');
   assert(contexts.includes('test') && contexts.includes('security / secrets') && !contexts.includes('all-checks'), 'existing hard checks remain and no unreported aggregate is required');
-  assert(committedApproval.rules.length === 1 && committedApproval.rules[0].type === 'pull_request', 'approval-main contains only the approval rule');
+  assert(!existsSync(new URL('../rulesets/approval-main.json', import.meta.url)), 'the second main ruleset payload is retired');
 }
 
 function mockedApi(meta, calls) {
