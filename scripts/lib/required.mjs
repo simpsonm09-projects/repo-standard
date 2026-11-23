@@ -27,10 +27,12 @@ export const COVERAGE_EXCEPTION = 'ci/coverage';
 
 const EXTRA_TEST_JOB = /^test-[A-Za-z0-9_-]+$/;
 
-// The public rollout adds `hooks` to each protect-main ruleset after the job
-// exists. A ruleset that already requires it is accepted, and a ruleset that
-// does not yet is not a missing check; the `hooks/ci` rule guarantees the job.
-const OPTIONAL_CONTEXTS = new Set(['hooks']);
+// The owner standard names `fmt` and `typecheck` as required checks, and the
+// public rollout adds `hooks` to each protect-main ruleset after the job exists.
+// A ruleset that already requires them is accepted, and a ruleset that does not
+// yet is not a missing check: `fmt` and `hooks` are checked from the tree, and a
+// `typecheck` context is only live on a repository that has the job.
+const OPTIONAL_CONTEXTS = new Set(['fmt', 'typecheck', 'hooks']);
 
 export function kindOf(exceptions, repo) {
   if (!repo) return 'covered';
