@@ -103,6 +103,14 @@ coverage:
 test-agent-access:
     {{op}} run test-agent-access
 
+# Run the hooks-group rule tests over fixtures.
+test-check-standard:
+    {{op}} run test-check-standard
+
+# Run the pre-push policy tests with stub shared scripts and a stub gitleaks.
+test-pre-push:
+    {{op}} run test-pre-push
+
 # Run the all-checks aggregate workflow policy tests over local fixtures.
 test-all-checks:
     {{op}} run test-all-checks

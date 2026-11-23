@@ -160,6 +160,18 @@
       "description": "Run the agent-access enforcement tests over the fixture catalog and the pre-push hook."
     },
     {
+      "id": "test-check-standard",
+      "kind": "portable",
+      "run": "node scripts/check-standard.test.mjs",
+      "description": "Run the hooks-group rule tests over fixtures."
+    },
+    {
+      "id": "test-pre-push",
+      "kind": "portable",
+      "run": "node scripts/pre-push.test.mjs",
+      "description": "Run the pre-push policy tests with stub shared scripts and a stub gitleaks."
+    },
+    {
       "id": "test-all-checks",
       "kind": "portable",
       "run": "node scripts/all-checks.test.mjs",
