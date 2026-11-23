@@ -17,7 +17,7 @@ the test runner.
 
 - `scripts/` holds repository operations. Each one is reachable from an operation
   manifest entry or a recipe.
-- Git hooks run through Lefthook: `lefthook.yml` loads the shared `hooks-v2` configs and
+- Git hooks run through Lefthook: `lefthook.yml` loads the shared `hooks-v3` configs and
   the `just` recipes implement the policy. `just hooks` installs them; there is no
   checked-in `.githooks` directory and no per-repository hook script.
 - A single-platform script declares the platform in a header comment within the first

@@ -13,7 +13,7 @@ The reusable repository standard for the fleet. It owns the shared CI, linting, 
 ## Git hooks
 
 Hooks run through Lefthook (C7.8). `lefthook.yml` loads `hooks/core.yml` and `hooks/owner.yml` from
-`simpsonm09-projects/.github` through `remotes` at the annotated tag `hooks-v2`; the jobs call the
+`simpsonm09-projects/.github` through `remotes` at the annotated tag `hooks-v3`; the jobs call the
 recipes in `justfile` and `ops.generated.just` from the C7.10 contract. `just hooks` migrates a local
 `core.hooksPath=.githooks`, refuses any other value or a global one, runs `lefthook install`, and
 asserts that `lefthook dump` contains the `core-*` and `owner-*` jobs. `lefthook-local.yml` is

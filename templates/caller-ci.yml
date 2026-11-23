@@ -80,7 +80,7 @@ jobs:
       - name: Install pinned tools
         uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
       - name: Fetch the shared hook config
-        # `install` fetches the public `hooks-v2` tag into
+        # `install` fetches the public `hooks-v3` tag into
         # `.git/info/lefthook-remotes`; `validate` alone silently skips remotes.
         run: lefthook install
       - name: Assert the merged config

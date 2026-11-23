@@ -18,7 +18,7 @@ import { isMain } from './lib/proc.mjs';
 const LEFTHOOK = [
   'remotes:',
   '  - git_url: https://github.com/simpsonm09-projects/.github',
-  '    ref: hooks-v2',
+  '    ref: hooks-v3',
   '    configs:',
   '      - hooks/core.yml',
   '      - hooks/owner.yml',
@@ -141,7 +141,7 @@ function testRemotes(assert) {
   );
   expect(
     assert,
-    complete({ 'lefthook.yml': LEFTHOOK.replace('hooks-v2', 'main') }),
+    complete({ 'lefthook.yml': LEFTHOOK.replace('hooks-v3', 'main') }),
     ['hooks/remotes'],
     'the wrong ref is reported',
   );
