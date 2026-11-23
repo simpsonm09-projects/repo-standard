@@ -1,46 +1,60 @@
 # Scripts
 
-Operational scripts live in `scripts/`. Each script ships as a bash version and a PowerShell version with the same behavior and the same exit codes. Change one and you change both.
+The script rules are policy: see
+[scripts](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#scripts).
+This guide covers where a script lives and what the checker reads.
 
-## Parity
+Repository scripts are TypeScript executed by Bun and called through `just`. A new
+script is `.ts` from the start. Bash remains only as a thin launcher for a git hook or a
+one-line wrapper. PowerShell is allowed only for code that runs on a Windows target.
+Python stays only where TypeScript cannot do the job, recorded in `docs/exceptions.md`.
 
-- `apply-rulesets.sh` and `apply-rulesets.ps1` apply every JSON file under `rulesets/` to a repository.
+Existing `.mjs` checkers in this repository migrate to Bun TypeScript one script at a
+time; `tsconfig.json` enables `strict`, `bun check` is the type check and `bun test` is
+the test runner.
 
-## Rules
+## Where a script lives
+
+- `scripts/` holds repository operations. Each one is reachable from an operation
+  manifest entry or a recipe.
+- A hook lives in `templates/hooks/pre-push` and is installed by `just hooks`.
+- A single-platform script declares the platform in a header comment within the first
+  ten lines:
+
+  ```bash
+  # platforms: windows
+  ```
+
+  The value is one word: `windows`, `posix`, `linux` or `macos`. A `.ps1` file must
+  declare `windows`.
+
+## Author rules
 
 - Read paths from the script location, not the current directory.
-- Print a dry run by default. Write only when the caller passes `--apply` or `-Apply`.
+- Print a dry run by default. Write only when the caller passes `--apply`.
 - Exit non-zero on a real failure. Exit zero when there is nothing to do.
 - Keep secrets out of a script. Read them from the environment by name.
-- Land a new flag or check in both versions in the same change.
-- Run consistent error handling. The bash version sets `set -euo pipefail`. The PowerShell version sets `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'`.
-
-## Declaring a single-platform script
-
-Most scripts are twins. When a script is legitimately single-platform, say so in a header comment within the first ten lines. The conformance check reads the comment and stops asking for a missing twin.
-
-```bash
-# platforms: posix
-```
-
-Use `# platforms: windows` for a PowerShell-only script. The value is one word: `windows`, `posix`, `linux`, or `macos`. A `.ps1` file must declare `windows`. A `.sh` file declares `posix` when it is portable across macOS and Linux, or the more specific `linux` or `macos` when it is not. `posix` is the portable default. Do not add a sidecar file.
 
 ## Conformance
 
-`scripts/check-standard.mjs` runs a `scripting` group over a repository. Each rule is a named entry in the printed matrix.
+`scripts/check-standard.mjs` runs a `scripting` group over a repository. Each rule is a
+named entry in the printed matrix.
 
 | Entry | Rule |
 | --- | --- |
 | `scripting/windows-shell` | the root `justfile` has a `set windows-shell` line |
-| `scripting/shell-ops` | a recipe body has no `&&`, `&`, `;`, `|`, redirection, `$VAR`, backtick substitution, `./`, or `.\` |
-| `scripting/interpreter` | a recipe body names no interpreter as its command word (a version suffix such as `python3.12` counts as `python`) outside a `{{ ... }}` expression or a `mise exec`/`mise run` line |
-| `scripting/twin-exists` | a recipe that routes on `os_family()` or `os()` points at scripts that exist |
-| `scripting/script-declared` | every `scripts/**/*.ps1` and `scripts/**/*.sh` is referenced by an op or recipe, or declares its platform |
+| `scripting/shell-ops` | a recipe body has no `&&`, `&`, `;`, `|`, redirection, `$VAR`, backtick substitution, `./` or `.\` |
+| `scripting/interpreter` | a recipe body names no interpreter as its command word outside a `{{ ... }}` expression or a `mise exec`/`mise run` line |
+| `scripting/script-declared` | every `scripts/**/*.ps1`, `scripts/**/*.sh` and `scripts/**/*.ts` is referenced by an operation or recipe, or declares its platform |
 | `scripting/skill-recipe` | a non-vendored skill says `just <recipe>`, never a script path |
-| `scripting/skill-duplicate` | a repo-local skill id is not in both `.claude/skills/` and `.opencode/skills/` |
+| `scripting/skill-location` | a skill lives in `.agents/skills/`, not `.claude/skills/` or `.opencode/skills/` |
+| `scripting/skill-link` | every `.agents/skills/<name>` has the relative symlink `.claude/skills/<name>` → `../../.agents/skills/<name>` |
+| `scripting/skill-set` | the two skill sets differ, or a link is broken |
 | `scripting/tools-check` | a repository with a `tools.yaml` has a `tools-check` recipe |
 
-Run the group on one repository with `just check-standard .`. Run it over the whole fleet with `just audit-fleet <repos-dir>`, which prints one matrix and exits non-zero when any repository fails. Vendored PStack skills are exempt.
+Run the group on one repository with `just check-standard .`. Run it over the whole fleet
+with `just audit-fleet <repos-dir>`, which prints one matrix and exits non-zero when any
+repository fails. Vendored PStack skills are exempt.
 
 ## Running
 
@@ -48,8 +62,4 @@ Run the group on one repository with `just check-standard .`. Run it over the wh
 bash scripts/apply-rulesets.sh <owner>/<repo> --apply
 ```
 
-```powershell
-pwsh -File scripts/apply-rulesets.ps1 -Repo <owner>/<repo> -Apply
-```
-
-The ruleset scripts need an authenticated `gh` CLI.
+The ruleset script needs an authenticated `gh` CLI. See [governance.md](governance.md).

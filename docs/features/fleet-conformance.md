@@ -17,7 +17,7 @@ repository path and prints a compact matrix of nine tree-local groups.
 | `dependabot` | `.github/dependabot.yml` declares version 2, a scheduled ecosystem, and no inline credential. |
 | `community` | The byte-identical community files match the pinned standard. |
 | `docs` | The [documentation layout](../documentation.md) holds. |
-| `scripting` | Recipe bodies stay portable, scripts are declared or twinned, non-vendored skills call `just <recipe>`, and a repo-local skill id is in one skill root. |
+| `scripting` | Recipe bodies stay portable, scripts are declared, non-vendored skills call `just <recipe>`, and `.agents/skills/` matches its `.claude/skills/` symlinks. |
 | `env` | Git's index contains no actual `.env` file at any depth, and the pre-push hook rejects such filenames in every proposed ref's reachable history before upload. If a repository opts into the env convention, a root `.worktreeinclude` lists each local file, `.gitignore` ignores it, and each listed path has a committed sibling `.example` template. |
 | `subprocess` | Every `node:child_process` call in a source file passes a literal `windowsHide: true`, so Windows opens no empty console window. |
 
@@ -53,8 +53,8 @@ Fix a finding by writing the options as a literal object in the call.
 [`../../scripts/check-repo.mjs`](../../scripts/check-repo.mjs) runs `check-standard`
 and then adds the checks a repository can make about itself through the GitHub API
 with its own token. It reads the identity from `GITHUB_REPOSITORY` or the `--repo`
-flag, and it applies the subset of [`../exceptions.json`](../exceptions.json) that
-names the repository.
+flag, and it applies the repository's own `docs/exceptions.md`, falling back to the
+central [`../exceptions.json`](../exceptions.json) for a repository that predates it.
 
 The API groups are `settings` and `ruleset`.
 
