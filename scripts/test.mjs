@@ -6,6 +6,7 @@
 //   node scripts/test.mjs
 
 import { EXIT } from './lib/exit.mjs';
+import { scrubGitEnv } from './lib/git-env.mjs';
 import { isMain, run } from './lib/proc.mjs';
 import { runTest as runAllChecks } from './all-checks.test.mjs';
 import { runTest as runCheckStandard } from './check-standard.test.mjs';
@@ -36,6 +37,9 @@ const SUITES = [
 ];
 
 export function runTests() {
+  // A hook exports GIT_DIR; a suite that builds throwaway repositories must not
+  // inherit it, or it would commit into the caller's checkout.
+  scrubGitEnv();
   let failed = false;
   for (const suite of SUITES) {
     if (suite() !== EXIT.OK) failed = true;

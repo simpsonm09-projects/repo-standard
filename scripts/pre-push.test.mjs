@@ -12,6 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { cleanGitEnv } from './lib/git-env.mjs';
 import { isMain } from './lib/proc.mjs';
 import { prePush, pushRefs } from './pre-push.mjs';
 
@@ -19,7 +20,11 @@ const ORG_URL = 'git@github.com:simpsonm09-projects/repo-template.git';
 const FORK_URL = 'git@github.com:deathpie/repo-template.git';
 
 function git(root, ...args) {
-  const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true });
+  const result = spawnSync('git', ['-C', root, ...args], {
+    encoding: 'utf8',
+    windowsHide: true,
+    env: cleanGitEnv(),
+  });
   if (result.status !== 0) throw new Error(`git ${args.join(' ')}: ${result.stderr}`);
   return result.stdout.trim();
 }
