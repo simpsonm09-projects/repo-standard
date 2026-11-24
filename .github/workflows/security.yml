@@ -38,7 +38,7 @@ jobs:
       - name: Upload SARIF
         if: github.event_name != 'pull_request'
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
         with:
           sarif_file: trivy.sarif
 
@@ -62,7 +62,7 @@ jobs:
       # gitleaks is already pinned in `mise.toml`, so this job installs it and
       # nothing else instead of pulling the Docker image.
       - name: Install the gitleaks pin
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           install_args: aqua:gitleaks/gitleaks
       - name: Scan the pull request diff for secrets
@@ -98,7 +98,7 @@ jobs:
       - name: Upload misconfiguration SARIF
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
         with:
           sarif_file: trivy-misconfig.sarif
       # Report only. Copyleft licenses carry a default HIGH severity in Trivy and
@@ -116,6 +116,6 @@ jobs:
       - name: Upload license SARIF
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
         with:
           sarif_file: trivy-license.sarif
