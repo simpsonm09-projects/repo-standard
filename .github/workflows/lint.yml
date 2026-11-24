@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Install pinned tools
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
       # A pull request lints the files it can reach; `main` and the weekly
       # schedule lint everything, so diff selection never hides a failure for
       # long (C5.2, C5.3). `full: true` forces the whole tree.
