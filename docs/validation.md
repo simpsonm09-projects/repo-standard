@@ -52,6 +52,32 @@ See [github-settings.md](github-settings.md).
 A repository also cannot see another repository through the API, so nothing checks a
 sibling repository in CI. The local fleet audit reads sibling checkouts on disk instead.
 
+## Required checks are the hook recipes (C5.7)
+
+A required pull-request check is a recipe the Lefthook hooks already run, so CI
+confirms what the hook caught instead of running a second, slower suite. A check that
+cannot fit the hook budgets (pre-commit under 3 s, pre-push under 30 s) stays a named
+CI-only required check with a one-line justification in the owner standard, or moves to
+`main` and the weekly schedule as a non-required job (C5.3, C5.4).
+
+| Required context      | Recipe                                      | Where the hook runs it | Decision and measured time                                                                                                                                         |
+| --------------------- | ------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fmt`                 | `just fmt-check`                            | `pre-push-check`       | Folded: 0.03–0.1 s.                                                                                                                                                |
+| `lint / flint`        | `just lint`                                 | `pre-push-check`       | Folded: 0.1–0.4 s over the whole tree.                                                                                                                             |
+| `typecheck`           | `just typecheck`                            | `pre-push-check`       | Folded where the recipe exists: 0.07–1 s.                                                                                                                          |
+| `test`                | `just test`                                 | `pre-push-check`       | Folded: 0.3–10 s.                                                                                                                                                  |
+| `security / secrets`  | gitleaks over the pushed range              | `hook-pre-push`        | Folded: the hook scans the exact range CI scans.                                                                                                                   |
+| `hooks`               | `just hooks` and the four hook-only recipes | CI only                | A hook cannot validate its own merged config; the job also runs `agent-files`, `forbidden-files`, `workflows` and `shellcheck`, the checks only a hook ran before. |
+| `standard / standard` | `just check-repo`                           | CI only                | Reads the repository's GitHub settings and ruleset through the API; a hook cannot see them. 2.2 s tree-local.                                                      |
+| `security / trivy`    | Trivy filesystem scan                       | CI only                | Downloads the vulnerability database; the action caches it per day.                                                                                                |
+| `aislop / aislop`     | `just aislop`                               | CI only                | 2.1 s warm, 9.2 s cold; it fetches the npm package tree, so a hook would block a push when the registry is unreachable.                                            |
+| `coverage / coverage` | `just coverage` plus the changed-line gate  | CI only                | The gate needs the pull request's base commit and the pinned `patch-coverage` checker; the recipe alone is 0.3–4 s.                                                |
+
+The `hooks` job in `ci.yml` runs the hook recipes CI does not otherwise cover, so every
+hook check has a CI confirmation. The same table with the owner's measured numbers is in
+`simpsonm09-projects/.github/standards/owner.md` under
+[CI-only required checks](https://github.com/simpsonm09-projects/.github/blob/main/standards/owner.md#ci-only-required-checks).
+
 ## Exceptions
 
 A repository records a tolerated gap in its own `docs/exceptions.md`: one row per rule
