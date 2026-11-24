@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkEnv } from './check-standard.mjs';
+import { cleanGitEnv } from './lib/git-env.mjs';
 import { isMain } from './lib/proc.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -36,7 +37,12 @@ function fixture(files, { untracked = [] } = {}) {
     writeFileSync(full, content);
   }
   const git = (...args) => {
-    const result = spawnSync('git', args, { cwd: root, windowsHide: true, encoding: 'utf8' });
+    const result = spawnSync('git', args, {
+      cwd: root,
+      windowsHide: true,
+      encoding: 'utf8',
+      env: cleanGitEnv(),
+    });
     if (result.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
   };
   git('init', '-q');
@@ -282,7 +288,13 @@ function testIgnoreSources(assert) {
 }
 
 function runGit(args, cwd, input) {
-  const result = spawnSync('git', args, { cwd, input, windowsHide: true, encoding: 'utf8' });
+  const result = spawnSync('git', args, {
+    cwd,
+    input,
+    windowsHide: true,
+    encoding: 'utf8',
+    env: cleanGitEnv(),
+  });
   if (result.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${(result.stderr ?? '').trim()}`);
   return result.stdout ?? '';
 }
@@ -318,6 +330,7 @@ function testPrePush(assert) {
 
     const push = (source, destination, expected, label) => {
       const result = spawnSync('git', ['push', 'origin', `${source}:refs/heads/${destination}`], {
+        env: cleanGitEnv(),
         cwd: clone,
         windowsHide: true,
         encoding: 'utf8',
